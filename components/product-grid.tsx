@@ -6,106 +6,106 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Search, Package } from "lucide-react"
-import type { Product } from "@/app/page"
+import { Producto, Familia } from '@/types/producto'
+import apiClient from "@/app/api/apiClient"
 
 interface ProductGridProps {
-  onProductSelect: (product: Product, quantity?: number) => void
+  onProductSelect: (product: Producto, quantity?: number) => void
 }
 
-const categories = [
-  { id: "todos", name: "TODOS", active: true },
-  { id: "servicios", name: "SERVICIOS GENERALES" },
-  { id: "electrico", name: "ELÉCTRICO" },
-  { id: "frenos", name: "FRENOS" },
-  { id: "mecanica", name: "MECÁNICA" },
-  { id: "rodamientos", name: "RODAMIENTOS" },
-  { id: "lubricantes", name: "LUBRICANTES" },
-]
-
 export function ProductGrid({ onProductSelect }: ProductGridProps) {
-  const [products, setProducts] = useState<Product[]>([])
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
+  const [productos, setProductos] = useState<Producto[]>([])
+  const [familias, setFamilias] = useState<Familia[]>([])
+  const [filteredProducts, setFilteredProducts] = useState<Producto[]>([])
   const [selectedCategory, setSelectedCategory] = useState("todos")
   const [searchTerm, setSearchTerm] = useState("")
   const [loading, setLoading] = useState(true)
+  const [searching, setSearching] = useState(false)
 
+  // Cargar familias y productos iniciales
   useEffect(() => {
-    // Mock data based on the API structure
-    const mockProducts: Product[] = [
-      {
-        id: 1,
-        codigo: "01",
-        nombre: "LIMPIEZA GENERAL",
-        precio: "5500.00",
-        inventarios: [{ cantidad: "10.00" }],
-        familia: { nombre: "SERVICIOS" },
-      },
-      {
-        id: 2,
-        codigo: "02",
-        nombre: "BOMBILLO HELLA H4 35/35W",
-        precio: "14000.00",
-        inventarios: [{ cantidad: "5.00" }],
-        familia: { nombre: "ELÉCTRICO" },
-      },
-      {
-        id: 3,
-        codigo: "03",
-        nombre: "BOMBILLO HELLA H51 M",
-        precio: "14500.00",
-        inventarios: [{ cantidad: "3.00" }],
-        familia: { nombre: "ELÉCTRICO" },
-      },
-      {
-        id: 4,
-        codigo: "04",
-        nombre: "BOMBILLO OSRAM H51 12V 35/35W",
-        precio: "15000.00",
-        inventarios: [{ cantidad: "8.00" }],
-        familia: { nombre: "ELÉCTRICO" },
-      },
-      {
-        id: 5,
-        codigo: "05",
-        nombre: "BOMBILLO SUPER BRIGHT 6A/55W",
-        precio: "6000.00",
-        inventarios: [{ cantidad: "12.00" }],
-        familia: { nombre: "ELÉCTRICO" },
-      },
-      {
-        id: 6,
-        codigo: "06",
-        nombre: "BOMBILLO NARVA S2 ESTÁNDAR",
-        precio: "15000.00",
-        inventarios: [{ cantidad: "6.00" }],
-        familia: { nombre: "ELÉCTRICO" },
-      },
-    ]
+    const loadInitialData = async () => {
+      try {
+        setLoading(true)
+        
+        // Cargar familias
+        const familiasResponse = await apiClient.get('/familia/combo-familia')
+        const familiasData = familiasResponse.data.data || familiasResponse.data
+        setFamilias(Array.isArray(familiasData) ? familiasData : [])
+        
+        // Cargar productos
+        const productosResponse = await apiClient.get('/producto/combo-producto')
+        const productosData = productosResponse.data.data || productosResponse.data
+        setProductos(Array.isArray(productosData) ? productosData : [])
+        setFilteredProducts(Array.isArray(productosData) ? productosData : [])
+        
+      } catch (error) {
+        console.error('Error loading data:', error)
+        setProductos([])
+        setFamilias([])
+        setFilteredProducts([])
+      } finally {
+        setLoading(false)
+      }
+    }
 
-    setProducts(mockProducts)
-    setFilteredProducts(mockProducts)
-    setLoading(false)
+    loadInitialData()
   }, [])
 
+  // Búsqueda en tiempo real
   useEffect(() => {
-    let filtered = products
+    const searchProducts = async () => {
+      if (!searchTerm.trim()) {
+        // Si no hay término, mostrar todos los productos
+        const response = await apiClient.get('/producto/combo-producto')
+        const data = response.data.data || response.data
+        setProductos(Array.isArray(data) ? data : [])
+        return
+      }
+
+      try {
+        setSearching(true)
+        const response = await apiClient.get('/producto/combo-producto', {
+          params: { search: searchTerm }
+        })
+        
+        const data = response.data.data || response.data
+        setProductos(Array.isArray(data) ? data : [])
+      } catch (error) {
+        console.error('Error searching products:', error)
+      } finally {
+        setSearching(false)
+      }
+    }
+
+    const timeoutId = setTimeout(() => {
+      searchProducts()
+    }, 500)
+
+    return () => clearTimeout(timeoutId)
+  }, [searchTerm])
+
+  // Filtrar productos por categoría
+  useEffect(() => {
+    let filtered = productos
 
     if (selectedCategory !== "todos") {
       filtered = filtered.filter((product) =>
-        product.familia.nombre.toLowerCase().includes(selectedCategory.toLowerCase()),
-      )
-    }
-
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (product) =>
-          product.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          product.codigo.toLowerCase().includes(searchTerm.toLowerCase()),
+        product.familia.nombre.toLowerCase().includes(selectedCategory.toLowerCase())
       )
     }
 
     setFilteredProducts(filtered)
-  }, [products, selectedCategory, searchTerm])
+  }, [productos, selectedCategory])
+
+  // Generar categorías desde las familias
+  const categories = [
+    { id: "todos", name: "TODOS", active: true },
+    ...familias.map(familia => ({
+      id: familia.nombre.toLowerCase(),
+      name: familia.nombre.toUpperCase()
+    }))
+  ]
 
   const formatPrice = (price: string) => {
     return new Intl.NumberFormat("es-CO", {
@@ -117,98 +117,191 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
 
   const getStockStatus = (quantity: string) => {
     const stock = Number.parseFloat(quantity)
-    if (stock === 0) return { color: "destructive", text: "Sin stock" }
-    if (stock <= 5) return { color: "warning", text: "Poco stock" }
+    if (stock <= 0) return { color: "destructive", text: "Sin stock" }
+    if (stock <= 5 && stock > 0) return { color: "warning", text: "Poco stock" }
     return { color: "success", text: "En stock" }
+  }
+
+  const getImageUrl = (imagenPath: string | null) => {
+    // console.log('imagenPath: ',imagenPath);
+    if (!imagenPath) return null
+    if (imagenPath.startsWith('http')) return imagenPath
+    return 'https://porfaolioerpbucket.nyc3.digitaloceanspaces.com/' + imagenPath.replace(/^\//, '')
+  }
+
+  const getTotalStock = (inventarios: Inventario[]) => {
+    return inventarios.reduce((total, inv) => total + Number.parseFloat(inv.cantidad), 0).toFixed(2)
   }
 
   return (
     <div className="p-4">
-      {/* Search */}
+      {/* Search con loading */}
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Buscar productos..."
+          placeholder="Buscar productos por código o nombre..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10"
+          className="pl-10 pr-10"
         />
+        {searching && (
+          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+          </div>
+        )}
       </div>
 
-      {/* Categories */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        {categories.map((category) => (
-          <Button
+      {/* Categories - Chips compactos */}
+      <div className="flex flex-wrap gap-1 mb-4">
+        <span
+          onClick={() => setSelectedCategory("todos")}
+          className={`inline-flex items-center px-2 py-1 rounded-full text-xs cursor-pointer transition-colors ${
+            selectedCategory === "todos" 
+              ? "bg-primary text-primary-foreground" 
+              : "bg-muted text-muted-foreground hover:bg-muted/80"
+          }`}
+        >
+          TODOS
+        </span>
+        {categories.slice(1, 12).map((category) => (
+          <span
             key={category.id}
-            variant={selectedCategory === category.id ? "default" : "outline"}
-            size="sm"
             onClick={() => setSelectedCategory(category.id)}
-            className="text-xs"
+            className={`inline-flex items-center px-2 py-1 rounded-full text-xs cursor-pointer transition-colors ${
+              selectedCategory === category.id 
+                ? "bg-primary text-primary-foreground" 
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
+            }`}
           >
-            {category.name}
-          </Button>
+            {category.name.split(' ')[0]}
+          </span>
         ))}
+        {categories.length > 12 && (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-muted text-muted-foreground">
+            +{categories.length - 12}
+          </span>
+        )}
       </div>
 
       {/* Products Count */}
-      <div className="mb-4">
-        <p className="text-sm text-muted-foreground">Productos: {filteredProducts.length}</p>
+      <div className="mb-4 flex justify-between items-center">
+        <p className="text-sm text-muted-foreground">
+          Productos: {filteredProducts.length}
+        </p>
+        {searchTerm && (
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => setSearchTerm("")}
+            className="text-xs"
+          >
+            Limpiar búsqueda
+          </Button>
+        )}
       </div>
 
       {/* Products Grid */}
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 min-[480px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
           {Array.from({ length: 10 }).map((_, i) => (
             <Card key={i} className="p-4 animate-pulse">
-              <div className="h-32 bg-muted rounded mb-3"></div>
+              <div className="h-24 bg-muted rounded mb-3"></div>
               <div className="h-4 bg-muted rounded mb-2"></div>
-              <div className="h-4 bg-muted rounded w-2/3"></div>
+              <div className="h-4 bg-muted rounded w-2/3 mb-2"></div>
+              <div className="h-6 bg-muted rounded w-1/2"></div>
             </Card>
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 min-[480px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
           {filteredProducts.map((product) => {
-            const stock = product.inventarios[0]?.cantidad || "0"
-            const stockStatus = getStockStatus(stock)
+            const totalStock = getTotalStock(product.inventarios)
+            const stockStatus = getStockStatus(totalStock)
 
             return (
               <Card
                 key={product.id}
-                className="p-4 cursor-pointer transition-all hover:bg-accent group"
+                className="cursor-pointer transition-all hover:shadow-lg group border overflow-hidden grid grid-rows-[80px_1fr] h-full"
                 onClick={() => onProductSelect(product)}
               >
-                <div className="flex flex-col h-full">
-                  {/* Product Image Placeholder */}
-                  <div className="flex items-center justify-center h-24 bg-muted rounded mb-3 group-hover:bg-muted/80">
-                    <Package className="h-8 w-8 text-muted-foreground" />
+                {/* Header con imagen */}
+                <div className="h-20 bg-muted relative">
+                  {product.imagen ? (
+                    <img 
+                      src={getImageUrl(product.imagen)} 
+                      alt={product.nombre}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none'
+                      }}
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Package className="h-10 w-10 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Contenido con grid interna */}
+                <div className="p-3 grid grid-rows-[auto_auto_1fr_auto] gap-1 h-full">
+                  {/* Código */}
+                  <div className="text-xs text-muted-foreground font-mono text-center">
+                    {product.codigo}
+                  </div>
+                  
+                  {/* Nombre con altura fija */}
+                  <h3 className="font-medium text-sm line-clamp-2 leading-tight text-center min-h-[2.5rem] flex items-center justify-center">
+                    {product.nombre}
+                  </h3>
+                  
+                  {/* Precio y familia */}
+                  <div className="text-center">
+                    <div className="text-base font-bold text-primary">
+                      {formatPrice(product.precio)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {product.familia.nombre}
+                    </div>
                   </div>
 
-                  {/* Product Info */}
-                  <div className="flex-1">
-                    <div className="text-xs text-muted-foreground mb-1">{product.codigo}</div>
-                    <h3 className="font-medium text-sm mb-2 line-clamp-2">{product.nombre}</h3>
-                    <div className="text-lg font-bold text-primary mb-2">{formatPrice(product.precio)}</div>
-                  </div>
-
-                  {/* Stock Badge */}
-                  <div className="flex justify-between items-center">
-                    <Badge variant={stockStatus.color as any} className="text-xs">
+                  {/* Stock minimalista */}
+                  <div className="flex items-center gap-2 mt-2">
+                    <div className={`w-2 h-2 rounded-full ${
+                      stockStatus.color === 'destructive' ? 'bg-destructive' :
+                      stockStatus.color === 'warning' ? 'bg-warning' :
+                      'bg-success'
+                    }`}></div>
+                    <span className="text-xs text-muted-foreground flex-1">
                       {stockStatus.text}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">Stock: {stock}</span>
+                    </span>
+                    <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded">
+                      {totalStock}
+                    </span>
                   </div>
+                  
                 </div>
               </Card>
             )
+
+            
           })}
         </div>
       )}
 
+      {/* Empty State */}
       {filteredProducts.length === 0 && !loading && (
         <div className="text-center py-12">
-          <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <p className="text-muted-foreground">No se encontraron productos</p>
+          <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+          <p className="text-muted-foreground mb-2">No se encontraron productos</p>
+          {searchTerm && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setSearchTerm("")}
+            >
+              Ver todos los productos
+            </Button>
+          )}
         </div>
       )}
     </div>
