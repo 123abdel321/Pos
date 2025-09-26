@@ -1,16 +1,17 @@
 import axios from 'axios';
 
 const apiClient = axios.create({
-    baseURL: 'http://localhost:8000/api',
+    baseURL: 'http://localhost:8000/api', // 🔥 Verifica que esta URL sea correcta
     headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
     },
+    timeout: 10000, // 🔥 Agregar timeout para evitar requests colgadas
 });
 
 // Interceptor para añadir el token a las peticiones
 apiClient.interceptors.request.use((config) => {
-    // Obtener token del localStorage (funciona en cliente)
+    // Verificar que estamos en el cliente antes de acceder a localStorage
     if (typeof window !== 'undefined') {
         const token = localStorage.getItem('authToken');
         if (token) {
@@ -25,7 +26,7 @@ apiClient.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
-            // Token expirado o inválido
+            // Solo redirigir en el cliente
             if (typeof window !== 'undefined') {
                 localStorage.removeItem('authToken');
                 window.location.href = '/login';

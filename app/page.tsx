@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { LocationSelector } from "@/components/location-selector"
 import { ProductGrid } from "@/components/product-grid"
 import { OrderPanel } from "@/components/order-panel"
@@ -9,7 +9,31 @@ import { PaymentModal } from "@/components/payment-modal"
 import { OrdersTableView } from "@/components/orders-table-view"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "@/components/theme-provider"
-import { Users, Settings, Sun, Moon, Table } from "lucide-react"
+import { 
+  Users, 
+  Settings, 
+  Sun, 
+  Moon, 
+  Table, 
+  LogOut, 
+  Menu,
+  User,
+  Bell,
+  HelpCircle,
+  CreditCard
+} from "lucide-react"
+import { useAuth } from "@/contexts/AuthContext"
+import ProtectedRoute from "@/components/sistem/ProtectedRoute"
+import LoginPage from "@/app/login/page" // Crearemos esta página
+// Importar componentes de dropdown
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 export interface Product {
 	id: number
@@ -47,7 +71,7 @@ export interface Order {
 	estado: "pendiente" | "completado"
 }
 
-export default function POSPage() {
+function POSContent() {
 	const [selectedLocation, setSelectedLocation] = useState<any>(null)
 	const [currentOrder, setCurrentOrder] = useState<Order | null>(null)
 	const [orders, setOrders] = useState<Order[]>([])
@@ -56,6 +80,24 @@ export default function POSPage() {
 	const [showOrdersTable, setShowOrdersTable] = useState(false)
 	const [ordersColumnExpanded, setOrdersColumnExpanded] = useState(false)
 	const { theme, setTheme } = useTheme()
+	const { user, logout, isAuthenticated, loading } = useAuth()
+
+	// Si no está autenticado, mostrar página de login
+	if (!isAuthenticated && !loading) {
+		// return <LoginPage />
+	}
+
+	// Mostrar loading mientras verifica autenticación
+	if (loading) {
+		return (
+			<div className="min-h-screen bg-background flex items-center justify-center">
+				<div className="text-center">
+					<div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+					<p className="mt-4 text-foreground">Verificando autenticación...</p>
+				</div>
+			</div>
+		)
+	}
 
 	const createNewOrder = (locationId?: number, locationName?: string) => {
 		const newOrder: Order = {
@@ -241,42 +283,141 @@ export default function POSPage() {
 		setOrders((prev) => prev.map((order) => (order.id === updatedOrder.id ? updatedOrder : order)))
 	}
 
+	const handleLogout = () => {
+		logout()
+		// Redirigir a login
+		window.location.href = '/'
+	}
+
 	return (
 		<div className="min-h-screen bg-background">
 			<header className="border-b border-border bg-card">
 				<div className="flex items-center justify-between px-6 py-4">
-					<div className="flex items-center gap-4">
-						<h1 className="text-2xl font-bold text-foreground">Sistema POS</h1>
-						<div className="text-sm text-muted-foreground">
-							{selectedLocation ? `Ubicación: ${selectedLocation.nombre}` : "Seleccionar ubicación"}
+				{/* Lado izquierdo */}
+				<div className="flex items-center gap-4">
+					<h1 className="text-2xl font-bold text-foreground">Sistema POS</h1>
+					<div className="text-sm text-muted-foreground">
+					{selectedLocation ? `Ubicación: ${selectedLocation.nombre}` : "Seleccionar ubicación"}
+					</div>
+				</div>
+
+				{/* Lado derecho - Menú compacto */}
+				<div className="flex items-center gap-2">
+					{/* Botón de tema */}
+					<Button
+					variant="outline"
+					size="sm"
+					onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+					className="gap-2 hidden sm:flex"
+					title={theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+					>
+					{theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+					</Button>
+
+					{/* Contador de pedidos */}
+					<Button 
+					variant="outline" 
+					size="sm"
+					onClick={() => setShowOrdersManager(true)}
+					className="gap-2"
+					title="Ver pedidos pendientes"
+					>
+					<Users className="h-4 w-4" />
+					<span className="hidden sm:inline">
+						({orders.filter((o) => o.estado === "pendiente").length})
+					</span>
+					</Button>
+
+					{/* Menú desplegable principal */}
+					<DropdownMenu>
+					<DropdownMenuTrigger asChild>
+						<Button variant="outline" size="sm" className="gap-2">
+						<Menu className="h-4 w-4" />
+						<span className="hidden sm:inline">Menú</span>
+						</Button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end" className="w-56">
+						{/* Información del usuario */}
+						<DropdownMenuLabel className="flex flex-col">
+						<div className="flex items-center gap-2">
+							<User className="h-4 w-4" />
+							<span>{user?.name || 'Usuario'}</span>
 						</div>
-					</div>
-					<div className="flex items-center gap-2">
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-							className="gap-2"
+						<span className="text-xs text-muted-foreground font-normal">
+							{user?.email || 'usuario@ejemplo.com'}
+						</span>
+						</DropdownMenuLabel>
+						
+						<DropdownMenuSeparator />
+
+						{/* Opciones de gestión */}
+						<DropdownMenuItem onClick={() => setShowOrdersTable(true)}>
+						<Table className="h-4 w-4 mr-2" />
+						Gestión de Pedidos
+						</DropdownMenuItem>
+
+						<DropdownMenuItem onClick={() => setShowOrdersManager(true)}>
+						<Users className="h-4 w-4 mr-2" />
+						Pedidos Pendientes
+						<span className="ml-auto text-xs bg-primary text-primary-foreground px-2 py-1 rounded-full">
+							{orders.filter((o) => o.estado === "pendiente").length}
+						</span>
+						</DropdownMenuItem>
+
+						<DropdownMenuSeparator />
+
+						{/* Configuración y temas */}
+						<DropdownMenuLabel className="text-xs">Preferencias</DropdownMenuLabel>
+						
+						<DropdownMenuItem onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+						{theme === "dark" ? (
+							<Sun className="h-4 w-4 mr-2" />
+						) : (
+							<Moon className="h-4 w-4 mr-2" />
+						)}
+						{theme === "dark" ? "Modo Claro" : "Modo Oscuro"}
+						</DropdownMenuItem>
+
+						<DropdownMenuItem>
+						<Settings className="h-4 w-4 mr-2" />
+						Configuración
+						</DropdownMenuItem>
+
+						<DropdownMenuItem>
+						<CreditCard className="h-4 w-4 mr-2" />
+						Métodos de Pago
+						</DropdownMenuItem>
+
+						<DropdownMenuSeparator />
+
+						{/* Ayuda y soporte */}
+						<DropdownMenuItem>
+						<HelpCircle className="h-4 w-4 mr-2" />
+						Ayuda y Soporte
+						</DropdownMenuItem>
+
+						<DropdownMenuItem>
+						<Bell className="h-4 w-4 mr-2" />
+						Notificaciones
+						</DropdownMenuItem>
+
+						<DropdownMenuSeparator />
+
+						{/* Cerrar sesión */}
+						<DropdownMenuItem 
+						onClick={handleLogout}
+						className="text-destructive focus:text-destructive"
 						>
-							{theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-							{theme === "dark" ? "Claro" : "Oscuro"}
-						</Button>
-						<Button variant="outline" size="sm" onClick={() => setShowOrdersManager(true)} className="gap-2">
-							<Users className="h-4 w-4" />
-							Pedidos ({orders.filter((o) => o.estado === "pendiente").length})
-						</Button>
-						<Button variant="outline" size="sm" onClick={() => setShowOrdersTable(true)} className="gap-2">
-							<Table className="h-4 w-4" />
-							Gestión
-						</Button>
-						<Button variant="outline" size="sm" className="gap-2 bg-transparent">
-							<Settings className="h-4 w-4" />
-							Configuración
-						</Button>
-					</div>
+						<LogOut className="h-4 w-4 mr-2" />
+						Cerrar Sesión
+						</DropdownMenuItem>
+					</DropdownMenuContent>
+					</DropdownMenu>
+				</div>
 				</div>
 			</header>
 
+			{/* El resto de tu contenido permanece igual */}
 			<div className="flex h-[calc(100vh-80px)]">
 				<div
 					className={`border-r border-border bg-card/50 transition-all duration-300 ${
@@ -366,7 +507,6 @@ export default function POSPage() {
 				</div>
 
 				<div className="flex-1 flex flex-col lg:flex-row">
-
 					<div className="flex-1 flex flex-col">
 						<div className="p-4 border-b border-border">
 							<LocationSelector
@@ -417,5 +557,13 @@ export default function POSPage() {
 				<PaymentModal order={currentOrder} onPayment={processPayment} onClose={() => setShowPaymentModal(false)} />
 			)}
 		</div>
+	)
+}
+
+export default function POSPage() {
+	return (
+		<ProtectedRoute>
+			<POSContent />
+		</ProtectedRoute>
 	)
 }
