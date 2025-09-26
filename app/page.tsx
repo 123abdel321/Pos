@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { LocationSelector } from "@/components/location-selector"
+import { Ubicacion } from '@/types/ubicacion';
 import { ProductGrid } from "@/components/product-grid"
 import { OrderPanel } from "@/components/order-panel"
 import { OrdersManager } from "@/components/orders-manager"
@@ -10,29 +11,29 @@ import { OrdersTableView } from "@/components/orders-table-view"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "@/components/theme-provider"
 import { 
-  Users, 
-  Settings, 
-  Sun, 
-  Moon, 
-  Table, 
-  LogOut, 
-  Menu,
-  User,
-  Bell,
-  HelpCircle,
-  CreditCard
+	Users, 
+	Settings, 
+	Sun, 
+	Moon, 
+	Table, 
+	LogOut, 
+	Menu,
+	User,
+	Bell,
+	HelpCircle,
+	CreditCard
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import ProtectedRoute from "@/components/sistem/ProtectedRoute"
 import LoginPage from "@/app/login/page" // Crearemos esta página
 // Importar componentes de dropdown
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
 export interface Product {
@@ -72,7 +73,7 @@ export interface Order {
 }
 
 function POSContent() {
-	const [selectedLocation, setSelectedLocation] = useState<any>(null)
+	const [selectedLocation, setSelectedLocation] = useState<Ubicacion | null>(null);
 	const [currentOrder, setCurrentOrder] = useState<Order | null>(null)
 	const [orders, setOrders] = useState<Order[]>([])
 	const [showOrdersManager, setShowOrdersManager] = useState(false)
@@ -84,7 +85,7 @@ function POSContent() {
 
 	// Si no está autenticado, mostrar página de login
 	if (!isAuthenticated && !loading) {
-		// return <LoginPage />
+		return <LoginPage />
 	}
 
 	// Mostrar loading mientras verifica autenticación
@@ -305,27 +306,27 @@ function POSContent() {
 				<div className="flex items-center gap-2">
 					{/* Botón de tema */}
 					<Button
-					variant="outline"
-					size="sm"
-					onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-					className="gap-2 hidden sm:flex"
-					title={theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+						variant="outline"
+						size="sm"
+						onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+						className="gap-2 hidden sm:flex"
+						title={theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
 					>
-					{theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+						{theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
 					</Button>
 
 					{/* Contador de pedidos */}
 					<Button 
-					variant="outline" 
-					size="sm"
-					onClick={() => setShowOrdersManager(true)}
-					className="gap-2"
-					title="Ver pedidos pendientes"
+						variant="outline" 
+						size="sm"
+						onClick={() => setShowOrdersManager(true)}
+						className="gap-2"
+						title="Ver pedidos pendientes"
 					>
 					<Users className="h-4 w-4" />
-					<span className="hidden sm:inline">
-						({orders.filter((o) => o.estado === "pendiente").length})
-					</span>
+						<span className="hidden sm:inline">
+							({orders.filter((o) => o.estado === "pendiente").length})
+						</span>
 					</Button>
 
 					{/* Menú desplegable principal */}
@@ -341,7 +342,7 @@ function POSContent() {
 						<DropdownMenuLabel className="flex flex-col">
 						<div className="flex items-center gap-2">
 							<User className="h-4 w-4" />
-							<span>{user?.name || 'Usuario'}</span>
+							<span>{user?.username || 'Usuario'}</span>
 						</div>
 						<span className="text-xs text-muted-foreground font-normal">
 							{user?.email || 'usuario@ejemplo.com'}
@@ -509,9 +510,9 @@ function POSContent() {
 				<div className="flex-1 flex flex-col lg:flex-row">
 					<div className="flex-1 flex flex-col">
 						<div className="p-4 border-b border-border">
-							<LocationSelector
-								selectedLocation={selectedLocation}
+							<LocationSelector 
 								onLocationSelect={setSelectedLocation}
+								selectedLocation={selectedLocation}
 								onNewOrder={createNewOrder}
 							/>
 						</div>
