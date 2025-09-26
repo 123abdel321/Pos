@@ -130,7 +130,7 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
   }
 
   const getTotalStock = (inventarios: Inventario[]) => {
-    return inventarios.reduce((total, inv) => total + Number.parseFloat(inv.cantidad), 0).toFixed(2)
+    return inventarios.reduce((total, inv) => total + Number.parseFloat(inv.cantidad), 0)
   }
 
   return (
@@ -217,73 +217,79 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
           {filteredProducts.map((product) => {
             const totalStock = getTotalStock(product.inventarios)
             const stockStatus = getStockStatus(totalStock)
-
-            return (
-              <Card
-                key={product.id}
-                className="cursor-pointer transition-all hover:shadow-lg group border overflow-hidden grid grid-rows-[80px_1fr] h-full"
-                onClick={() => onProductSelect(product)}
-              >
-                {/* Header con imagen */}
-                <div className="h-20 bg-muted relative">
-                  {product.imagen ? (
-                    <img 
-                      src={getImageUrl(product.imagen)} 
-                      alt={product.nombre}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none'
-                      }}
-                    />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Package className="h-10 w-10 text-muted-foreground" />
-                    </div>
-                  )}
-                </div>
-
-                {/* Contenido con grid interna */}
-                <div className="p-3 grid grid-rows-[auto_auto_1fr_auto] gap-1 h-full">
-                  {/* Código */}
-                  <div className="text-xs text-muted-foreground font-mono text-center">
-                    {product.codigo}
-                  </div>
-                  
-                  {/* Nombre con altura fija */}
-                  <h3 className="font-medium text-sm line-clamp-2 leading-tight text-center min-h-[2.5rem] flex items-center justify-center">
-                    {product.nombre}
-                  </h3>
-                  
-                  {/* Precio y familia */}
-                  <div className="text-center">
-                    <div className="text-base font-bold text-primary">
-                      {formatPrice(product.precio)}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {product.familia.nombre}
-                    </div>
-                  </div>
-
-                  {/* Stock minimalista */}
-                  <div className="flex items-center gap-2 mt-2">
-                    <div className={`w-2 h-2 rounded-full ${
-                      stockStatus.color === 'destructive' ? 'bg-destructive' :
-                      stockStatus.color === 'warning' ? 'bg-warning' :
-                      'bg-success'
-                    }`}></div>
-                    <span className="text-xs text-muted-foreground flex-1">
-                      {stockStatus.text}
-                    </span>
-                    <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded">
-                      {totalStock}
-                    </span>
-                  </div>
-                  
-                </div>
-              </Card>
-            )
-
             
+            return (
+                <Card
+                    key={product.id}
+                    // Mantenemos la estructura de Grid para la imagen (120px) y el contenido (resto)
+                    className="cursor-pointer transition-all hover:shadow-lg group border overflow-hidden grid grid-rows-[120px_1fr] h-full"
+                    onClick={() => onProductSelect(product)}
+                >
+                    {/* Header (120px) con Imagen, Familia y CÓDIGO */}
+                    <div className="h-32 bg-muted relative">
+                        
+                        {/* Etiqueta de Familia (Fondo oscuro transparente y texto blanco) */}
+                        {product.familia?.nombre && (
+                            <div className="absolute top-1 left-1 bg-black/40 text-white text-[10px] px-2 py-0.5 rounded-sm z-10 font-medium uppercase tracking-wider backdrop-blur-[1px]">
+                                {product.familia.nombre}
+                            </div>
+                        )}
+
+                        {/* CÓDIGO (Fondo oscuro transparente y texto blanco) */}
+                        <div className="absolute top-1 right-1 text-xs text-white bg-black/40 px-2 py-0.5 rounded-sm z-10 font-mono backdrop-blur-[1px]">
+                            {product.codigo}
+                        </div>
+
+                        {/* Imagen o Icono de paquete */}
+                        {product.imagen ? (
+                            <img 
+                                src={getImageUrl(product.imagen)} 
+                                alt={product.nombre}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                    e.currentTarget.style.display = 'none'
+                                }}
+                            />
+                        ) : (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <Package className="h-12 w-12 text-muted-foreground" />
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Contenido (Minimalista) */}
+                    <div className="p-3 grid grid-rows-[auto_1fr_auto] gap-1 h-full">
+                        
+                        {/* Nombre con altura fija y más énfasis */}
+                        <h3 className="font-bold text-sm line-clamp-2 leading-snug text-center min-h-[2.5rem] flex items-center justify-center">
+                            {product.nombre}
+                        </h3>
+                        
+                        {/* Precio (text-xl) */}
+                        <div className="text-center flex items-center justify-center py-1">
+                            <div className="text-xl font-bold text-primary/90">
+                                {formatPrice(product.precio)}
+                            </div>
+                        </div>
+
+                        {/* Stock minimalista (En el footer) */}
+                        <div className="flex items-center gap-2 mt-auto border-t pt-2">
+                            <div className={`w-2 h-2 rounded-full ${
+                                stockStatus.color === 'destructive' ? 'bg-destructive' :
+                                stockStatus.color === 'warning' ? 'bg-warning' :
+                                'bg-success'
+                            }`}></div>
+                            <span className="text-xs text-muted-foreground flex-1">
+                                {stockStatus.text}
+                            </span>
+                            <span className="text-sm font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                                {totalStock}
+                            </span>
+                        </div>
+                        
+                    </div>
+                </Card>
+            )
           })}
         </div>
       )}
