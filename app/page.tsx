@@ -25,8 +25,8 @@ import {
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import ProtectedRoute from "@/components/sistem/ProtectedRoute"
-import LoginPage from "@/app/login/page" // Crearemos esta página
-// Importar componentes de dropdown
+import LoginPage from "@/app/login/page"
+import apiClient from "@/app/api/apiClient" // ← AGREGAR ESTE IMPORT
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -72,6 +72,42 @@ export interface Order {
 	estado: "pendiente" | "completado"
 }
 
+export interface Cliente {
+	id: number
+	id_tipo_documento: number
+	id_ciudad: number | null
+	primer_nombre: string
+	segundo_nombre: string | null
+	primer_apellido: string
+	segundo_apellido: string | null
+	email: string
+	sumar_aiu: number | null
+	porcentaje_aiu: number | null
+	porcentaje_reteica: number | null
+	apartamentos: string
+	id_responsabilidades: number | null
+	telefono: string | null
+	text: string
+	nombre_completo: string
+}
+
+export interface Bodega {
+	id: number
+	codigo: string
+	nombre: string
+	ubicacion: string
+	id_centro_costos: number
+	id_responsable: number | null
+	id_cuenta_cartera: number
+	consecutivo: number
+	consecutivo_parqueadero: number
+	created_by: number | null
+	updated_by: number | null
+	created_at: string | null
+	updated_at: string
+	text: string
+}
+
 function POSContent() {
 	const [selectedLocation, setSelectedLocation] = useState<Ubicacion | null>(null);
 	const [currentOrder, setCurrentOrder] = useState<Order | null>(null)
@@ -82,6 +118,8 @@ function POSContent() {
 	const [ordersColumnExpanded, setOrdersColumnExpanded] = useState(false)
 	const { theme, setTheme } = useTheme()
 	const { user, logout, isAuthenticated, loading } = useAuth()
+	const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null)
+	const [selectedBodega, setSelectedBodega] = useState<Bodega | null>(null)
 
 	// Si no está autenticado, mostrar página de login
 	if (!isAuthenticated && !loading) {
@@ -100,7 +138,7 @@ function POSContent() {
 		)
 	}
 
-	const createNewOrder = (locationId?: number, locationName?: string) => {
+	const createNewOrder = async (locationId?: number, locationName?: string) => {
 		const newOrder: Order = {
 			id: `order-${Date.now()}`,
 			id_ubicacion: locationId || null,
@@ -114,11 +152,19 @@ function POSContent() {
 		}
 		setCurrentOrder(newOrder)
 		setOrders((prev) => [...prev, newOrder])
+		setSelectedCliente(null)
+
+		// ✅ GUARDAR EL NUEVO PEDIO AUTOMÁTICAMENTE
+		try {
+			await saveOrderToBackend(newOrder, null, selectedBodega)
+		} catch (error) {
+			console.error('Error creando nuevo pedido:', error)
+		}
 	}
 
-	const addProductToOrder = (product: Product, quantity = 1) => {
+	const addProductToOrder = async (product: Product, quantity = 1) => {
 		if (!currentOrder) {
-			createNewOrder(selectedLocation?.id, selectedLocation?.nombre)
+			await createNewOrder(selectedLocation?.id, selectedLocation?.nombre)
 			return
 		}
 
@@ -130,15 +176,15 @@ function POSContent() {
 			const updatedProducts = [...currentOrder.productos]
 			updatedProducts[existingProductIndex].cantidad += quantity
 			updatedProducts[existingProductIndex].subtotal =
-				updatedProducts[existingProductIndex].costo * updatedProducts[existingProductIndex].cantidad
+			updatedProducts[existingProductIndex].costo * updatedProducts[existingProductIndex].cantidad
 			updatedProducts[existingProductIndex].iva_valor =
-				updatedProducts[existingProductIndex].subtotal * (updatedProducts[existingProductIndex].iva_porcentaje / 100)
+			updatedProducts[existingProductIndex].subtotal * (updatedProducts[existingProductIndex].iva_porcentaje / 100)
 			updatedProducts[existingProductIndex].total =
-				updatedProducts[existingProductIndex].subtotal + updatedProducts[existingProductIndex].iva_valor
+			updatedProducts[existingProductIndex].subtotal + updatedProducts[existingProductIndex].iva_valor
 
 			updatedOrder = {
-				...currentOrder,
-				productos: updatedProducts,
+			...currentOrder,
+			productos: updatedProducts,
 			}
 		} else {
 			const precio = Number.parseFloat(product.precio)
@@ -174,9 +220,91 @@ function POSContent() {
 
 		setCurrentOrder(updatedOrder)
 		setOrders((prev) => prev.map((order) => (order.id === updatedOrder.id ? updatedOrder : order)))
+
+		// ✅ GUARDAR AUTOMÁTICAMENTE EN EL BACKEND
+		try {
+			await saveOrderToBackend(updatedOrder, selectedCliente, selectedBodega)
+			console.log('✅ Producto agregado y pedido guardado')
+		} catch (error) {
+			console.error('❌ Error guardando pedido automáticamente:', error)
+		}
 	}
 
-	const updateProductQuantity = (productId: number, newQuantity: number) => {
+	// Función para actualizar la bodega:
+	const handleUpdateBodega = async (bodega: Bodega | null) => {
+		setSelectedBodega(bodega)
+
+		// ✅ GUARDAR AUTOMÁTICAMENTE cuando se cambia la bodega
+		if (currentOrder) {
+			try {
+				await saveOrderToBackend(currentOrder, selectedCliente, bodega) // ← Agregar bodega
+			} catch (error) {
+			console.error('Error guardando pedido al cambiar bodega:', error)
+			}
+		}
+	}
+
+	// Función para actualizar el cliente:
+	const handleUpdateCliente = async (cliente: Cliente | null) => {
+		setSelectedCliente(cliente)
+		
+		// ✅ GUARDAR AUTOMÁTICAMENTE cuando se cambia el cliente
+		if (currentOrder) {
+			try {
+				await saveOrderToBackend(currentOrder, cliente, selectedBodega)
+			} catch (error) {
+				console.error('Error guardando pedido al cambiar cliente:', error)
+			}
+		}
+	}
+
+	// Función para guardar el pedido en el backend:
+	const saveOrderToBackend = async (order: Order, cliente: Cliente | null, bodega: Bodega | null) => {
+		try {
+			const payload = {
+				productos: order.productos,
+				id_ubicacion: order.id_ubicacion,
+				id_bodega: bodega?.id?.toString() || "1", // 🔥 Usar la bodega seleccionada
+				consecutivo: order.id.replace('order-', ''),
+				id_cliente: cliente?.id?.toString() || "1",
+				fecha_manual: new Date().toISOString().split('T')[0],
+				id_resolucion: "1",
+				id_vendedor: null,
+				id_pedido: null,
+				observacion: `Pedido desde POS - ${order.ubicacion_nombre}`
+			}
+
+			const response = await apiClient.post('/pedido', payload)
+			console.log('✅ Pedido guardado:', response.data)
+			return response.data
+		} catch (error: any) {
+			console.error('❌ Error guardando pedido:', error)
+			// Aquí podrías mostrar una notificación al usuario
+			// o implementar un sistema de reintentos
+			throw error
+		}
+	}
+
+	// Modifica la función processPayment para guardar el pedido:
+	const processPayment = async (paymentData: any) => {
+		if (currentOrder) {
+			try {
+				// Guardar el pedido en el backend antes de procesar el pago
+				await saveOrderToBackend(currentOrder, selectedCliente, selectedBodega)
+				
+				const completedOrder = { ...currentOrder, estado: "completado" as const }
+				setOrders((prev) => prev.map((order) => (order.id === completedOrder.id ? completedOrder : order)))
+				setCurrentOrder(null)
+				setSelectedCliente(null)
+				setShowPaymentModal(false)
+			} catch (error) {
+				console.error('Error procesando pedido:', error)
+				// Aquí podrías mostrar un mensaje de error al usuario
+			}
+		}
+	}
+
+	const updateProductQuantity = async (productId: number, newQuantity: number) => {
 		if (!currentOrder) return
 
 		if (newQuantity <= 0) {
@@ -186,12 +314,12 @@ function POSContent() {
 
 		const updatedProducts = currentOrder.productos.map((item) => {
 			if (item.id_producto === productId) {
-				const updatedItem = { ...item }
-				updatedItem.cantidad = newQuantity
-				updatedItem.subtotal = updatedItem.costo * newQuantity
-				updatedItem.iva_valor = updatedItem.subtotal * (updatedItem.iva_porcentaje / 100)
-				updatedItem.total = updatedItem.subtotal + updatedItem.iva_valor
-				return updatedItem
+			const updatedItem = { ...item }
+			updatedItem.cantidad = newQuantity
+			updatedItem.subtotal = updatedItem.costo * newQuantity
+			updatedItem.iva_valor = updatedItem.subtotal * (updatedItem.iva_porcentaje / 100)
+			updatedItem.total = updatedItem.subtotal + updatedItem.iva_valor
+			return updatedItem
 			}
 			return item
 		})
@@ -207,9 +335,16 @@ function POSContent() {
 
 		setCurrentOrder(updatedOrder)
 		setOrders((prev) => prev.map((order) => (order.id === updatedOrder.id ? updatedOrder : order)))
+
+		// ✅ GUARDAR AUTOMÁTICAMENTE
+		try {
+			await saveOrderToBackend(updatedOrder, selectedCliente, selectedBodega)
+		} catch (error) {
+			console.error('Error guardando pedido automáticamente:', error)
+		}
 	}
 
-	const removeProductFromOrder = (productId: number) => {
+	const removeProductFromOrder = async (productId: number) => {
 		if (!currentOrder) return
 
 		const updatedProducts = currentOrder.productos.filter((item) => item.id_producto !== productId)
@@ -225,6 +360,13 @@ function POSContent() {
 
 		setCurrentOrder(updatedOrder)
 		setOrders((prev) => prev.map((order) => (order.id === updatedOrder.id ? updatedOrder : order)))
+
+		// ✅ GUARDAR AUTOMÁTICAMENTE
+		try {
+			await saveOrderToBackend(updatedOrder, selectedCliente, selectedBodega)
+		} catch (error) {
+			console.error('Error guardando pedido automáticamente:', error)
+		}
 	}
 
 	const deleteOrder = (orderId: string) => {
@@ -251,21 +393,12 @@ function POSContent() {
 		}
 	}
 
-	const processPayment = (paymentData: any) => {
-		if (currentOrder) {
-			const completedOrder = { ...currentOrder, estado: "completado" as const }
-			setOrders((prev) => prev.map((order) => (order.id === completedOrder.id ? completedOrder : order)))
-			setCurrentOrder(null)
-			setShowPaymentModal(false)
-		}
-	}
-
-	const updateProductInOrder = (updatedProduct: OrderItem) => {
+	const updateProductInOrder = async (updatedProduct: OrderItem) => {
 		if (!currentOrder) return
 
 		const updatedProducts = currentOrder.productos.map((item) => {
 			if (item.consecutivo === updatedProduct.consecutivo) {
-				return updatedProduct
+			return updatedProduct
 			}
 			return item
 		})
@@ -275,13 +408,19 @@ function POSContent() {
 			productos: updatedProducts,
 		}
 
-		// Recalculate order totals
 		updatedOrder.subtotal = updatedOrder.productos.reduce((sum, item) => sum + item.subtotal, 0)
 		updatedOrder.iva = updatedOrder.productos.reduce((sum, item) => sum + item.iva_valor, 0)
 		updatedOrder.total = updatedOrder.subtotal + updatedOrder.iva
 
 		setCurrentOrder(updatedOrder)
 		setOrders((prev) => prev.map((order) => (order.id === updatedOrder.id ? updatedOrder : order)))
+
+		// ✅ GUARDAR AUTOMÁTICAMENTE
+		try {
+			await saveOrderToBackend(updatedOrder, selectedCliente, selectedBodega)
+		} catch (error) {
+			console.error('Error guardando pedido automáticamente:', error)
+		}
 	}
 
 	const handleLogout = () => {
@@ -529,8 +668,10 @@ function POSContent() {
 							onNewOrder={() => createNewOrder(selectedLocation?.id, selectedLocation?.nombre)}
 							onUpdateQuantity={updateProductQuantity}
 							onRemoveProduct={removeProductFromOrder}
-							onCancelOrder={cancelCurrentOrder}
 							onUpdateProduct={updateProductInOrder}
+							onUpdateCliente={handleUpdateCliente}
+							onUpdateBodega={handleUpdateBodega}
+							onCancelOrder={cancelCurrentOrder}
 						/>
 					</div>
 				</div>

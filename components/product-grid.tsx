@@ -181,12 +181,12 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
     return 'https://porfaolioerpbucket.nyc3.digitaloceanspaces.com/' + imagenPath.replace(/^\//, '')
   }
 
-  const getTotalStock = (inventarios: Inventario[]) => {
+  const getTotalStock = (inventarios: any[]) => {
     return inventarios.reduce((total, inv) => total + Number.parseFloat(inv.cantidad), 0)
   }
 
   return (
-    <div className="p-4" onClick={handleGridClick}> {/* 🔥 Click en grid para focus */}
+    <div className="p-4"> {/* 🔥 Click en grid para focus */}
       {/* Search MEJORADO para código de barras */}
       <div className="relative mb-4">
         <div className="flex items-center gap-2">
@@ -293,17 +293,16 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
               <Card
                 key={product.id}
                 className="cursor-pointer transition-all hover:shadow-lg group border overflow-hidden grid grid-rows-[120px_1fr] h-full"
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation() // ← ESTO ES IMPORTANTE
                   onProductSelect(product)
-                  // 🔥 Re-focus al input después de seleccionar producto
+                  // Re-focus al input después de seleccionar producto
                   setTimeout(() => {
-                    if (searchInputRef.current) {
-                      searchInputRef.current.focus()
-                    }
+                    searchInputRef.current?.focus()
                   }, 100)
                 }}
               >
-                {/* Header con Imagen, Familia y CÓDIGO */}
+                {/* Header con Imagen, Familia y Código */}
                 <div className="h-32 bg-muted relative overflow-hidden">
                   {product.familia?.nombre && (
                     <div className="absolute top-1 left-1 bg-black/40 text-white text-[10px] px-2 py-0.5 rounded-sm z-10 font-medium uppercase tracking-wider backdrop-blur-[1px]">
@@ -317,7 +316,7 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
 
                   {product.imagen ? (
                     <img 
-                      src={getImageUrl(product.imagen)} 
+                      src={`${getImageUrl(product.imagen)}`} 
                       alt={product.nombre}
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.05]" 
                       onError={(e) => {
@@ -336,19 +335,36 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
                   <h3 className="font-bold text-sm line-clamp-2 leading-snug text-center min-h-[2.5rem] flex items-center justify-center">
                     {product.nombre}
                   </h3>
-                  
+
+                  {/* Ajuste de precio mejorado */}
                   <div className="text-center flex items-center justify-center py-1">
-                    <div className="text-xl font-bold text-primary/90 transition-opacity duration-300 group-hover:text-primary">
-                      {formatPrice(product.precio)}
-                    </div>
+                    {(() => {
+                      const precioNumber = Number(product.precio); // Aseguramos número
+                      const formattedPrice = formatPrice(`${precioNumber}`);
+                      const isHighPrice = precioNumber >= 1000000; // Más de un millón
+
+                      return (
+                        <div
+                          className={`${
+                            isHighPrice ? "text-base" : "text-xl"
+                          } font-bold text-primary/90 transition-opacity duration-300 group-hover:text-primary`}
+                        >
+                          {formattedPrice}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   <div className="flex items-center gap-2 mt-auto border-t pt-2">
-                    <div className={`w-2 h-2 rounded-full ${
-                      stockStatus.color === 'destructive' ? 'bg-destructive' :
-                      stockStatus.color === 'warning' ? 'bg-warning' :
-                      'bg-success'
-                    }`}></div>
+                    <div
+                      className={`w-2 h-2 rounded-full ${
+                        stockStatus.color === "destructive"
+                          ? "bg-destructive"
+                          : stockStatus.color === "warning"
+                          ? "bg-warning"
+                          : "bg-success"
+                      }`}
+                    ></div>
                     <span className="text-xs text-muted-foreground flex-1">
                       {stockStatus.text}
                     </span>
@@ -358,7 +374,8 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
                   </div>
                 </div>
               </Card>
-            )
+            );
+
           })}
         </div>
       )}
