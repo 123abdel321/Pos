@@ -63,16 +63,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 			console.log('🔑 Token obtenido:', token ? `${token.substring(0, 10)}...` : 'NULL');
 			
 			if (token) {
-				console.log('🚀 Haciendo petición a /pos-validate...');
+				console.log('🚀 Haciendo petición a /pos/validate...');
 				
 				// Asegurar que el token esté en localStorage para el interceptor
 				if (typeof window !== 'undefined') {
 					localStorage.setItem('authToken', token);
 				}
 				
-				const response = await apiClient.get('/pos-validate', {
+				const response = await apiClient.get('/pos/validate', {
 					headers: {
-						Authorization: `Bearer ${token}`
+					Authorization: `Bearer ${token}`
 					}
 				});
 				
@@ -82,6 +82,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 					setUser(response.data.user);
 					setAuth(token, response.data.user);
 					console.log('🎉 Usuario autenticado correctamente');
+					
+					// 👇 GUARDAR CLIENTE POR DEFECTO EN LOCALSTORAGE
+					if (response.data.data?.cliente) {
+						const clienteDefault = {
+							id: response.data.data.cliente.id,
+							id_tipo_documento: response.data.data.cliente.id_tipo_documento,
+							id_ciudad: response.data.data.cliente.id_ciudad,
+							primer_nombre: response.data.data.cliente.primer_nombre,
+							segundo_nombre: response.data.data.cliente.segundo_nombre,
+							primer_apellido: response.data.data.cliente.primer_apellido,
+							segundo_apellido: response.data.data.cliente.segundo_apellido,
+							email: response.data.data.cliente.email,
+							sumar_aiu: response.data.data.cliente.sumar_aiu,
+							porcentaje_aiu: response.data.data.cliente.porcentaje_aiu,
+							porcentaje_reteica: response.data.data.cliente.porcentaje_reteica,
+							apartamentos: response.data.data.cliente.apartamentos,
+							id_responsabilidades: response.data.data.cliente.id_responsabilidades,
+							telefono: response.data.data.cliente.telefono,
+							text: response.data.data.cliente.text,
+							nombre_completo: response.data.data.cliente.nombre_completo
+						};
+						
+						localStorage.setItem('clientePorDefecto', JSON.stringify(clienteDefault));
+						console.log('💾 Cliente por defecto guardado:', clienteDefault.nombre_completo);
+					}
 				} else {
 					console.log('❌ Servidor respondió con success: false');
 					clearAuth();
@@ -104,6 +129,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 			if (error.response?.status === 401) {
 				console.log('🔒 Error 401 - Token inválido, limpiando...');
 				clearAuth();
+				// También limpiar el cliente por defecto
+				localStorage.removeItem('clientePorDefecto');
 			}
 			setIsAuthenticated(false);
 			setUser(null);
@@ -124,7 +151,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 			// Guardar el token inmediatamente
 			setAuth(token, { id: 0, name: '', email: '' });
 			
-			const response = await apiClient.get('/pos-validate', {
+			const response = await apiClient.get('/pos/validate', {
 				headers: {
 					Authorization: `Bearer ${token}`
 				}

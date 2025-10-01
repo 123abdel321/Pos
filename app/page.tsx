@@ -62,6 +62,7 @@ export interface OrderItem {
 
 export interface Order {
 	id: string
+	id_backend: number | null
 	id_ubicacion: number | null
 	ubicacion_nombre: string
 	productos: OrderItem[]
@@ -121,6 +122,22 @@ function POSContent() {
 	const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null)
 	const [selectedBodega, setSelectedBodega] = useState<Bodega | null>(null)
 
+	useEffect(() => {
+		if (typeof window !== 'undefined') {
+			const clienteGuardado = localStorage.getItem('clientePorDefecto');
+			if (clienteGuardado) {
+				try {
+					const cliente = JSON.parse(clienteGuardado);
+					setSelectedCliente(cliente);
+					console.log('📥 Cliente por defecto cargado desde localStorage:', cliente.nombre_completo);
+					
+				} catch (error) {
+					console.error('❌ Error cargando cliente desde localStorage:', error);
+				}
+			}
+		}
+	}, [currentOrder, selectedBodega]);
+
 	// Si no está autenticado, mostrar página de login
 	if (!isAuthenticated && !loading) {
 		return <LoginPage />
@@ -139,8 +156,25 @@ function POSContent() {
 	}
 
 	const createNewOrder = async (locationId?: number, locationName?: string) => {
+		// 🔥 CARGAR CLIENTE POR DEFECTO SIEMPRE AL CREAR NUEVO PEDIDO
+		let clienteDefault = selectedCliente;
+		
+		if (!clienteDefault && typeof window !== 'undefined') {
+			const clienteGuardado = localStorage.getItem('clientePorDefecto');
+			if (clienteGuardado) {
+				try {
+					clienteDefault = JSON.parse(clienteGuardado);
+					setSelectedCliente(clienteDefault);
+					console.log('📥 Cliente por defecto cargado en nuevo pedido:', clienteDefault?.nombre_completo);
+				} catch (error) {
+					console.error('❌ Error cargando cliente por defecto:', error);
+				}
+			}
+		}
+
 		const newOrder: Order = {
 			id: `order-${Date.now()}`,
+			id_backend: null,
 			id_ubicacion: locationId || null,
 			ubicacion_nombre: locationName || "Mostrador",
 			productos: [],
@@ -150,13 +184,19 @@ function POSContent() {
 			fecha: new Date().toISOString(),
 			estado: "pendiente",
 		}
+		
 		setCurrentOrder(newOrder)
 		setOrders((prev) => [...prev, newOrder])
-		setSelectedCliente(null)
-
-		// ✅ GUARDAR EL NUEVO PEDIO AUTOMÁTICAMENTE
+		
+		// ✅ GUARDAR EL NUEVO PEDIDO CON EL CLIENTE POR DEFECTO
 		try {
-			await saveOrderToBackend(newOrder, null, selectedBodega)
+			const savedOrder = await saveOrderToBackend(newOrder, clienteDefault, selectedBodega)
+			console.log('savedOrder: ',savedOrder);
+			if (savedOrder?.id_backend) {
+				const orderWithBackendId = { ...newOrder, id_backend: savedOrder.id_backend }
+				setCurrentOrder(orderWithBackendId)
+				setOrders((prev) => prev.map((o) => (o.id === newOrder.id ? orderWithBackendId : o)))
+			}
 		} catch (error) {
 			console.error('Error creando nuevo pedido:', error)
 		}
@@ -270,13 +310,20 @@ function POSContent() {
 				fecha_manual: new Date().toISOString().split('T')[0],
 				id_resolucion: "1",
 				id_vendedor: null,
-				id_pedido: null,
+				id_pedido: order.id_backend ? order.id_backend.toString() : null,
 				observacion: `Pedido desde POS - ${order.ubicacion_nombre}`
 			}
 
-			const response = await apiClient.post('/pedido', payload)
+			const response = await apiClient.post('/pos/pedido', payload)
 			console.log('✅ Pedido guardado:', response.data)
-			return response.data
+
+			const backendId = response.data.data?.id
+			if (backendId) {
+				// Retorna el objeto de la orden con el id_backend para actualización local
+				return { ...order, id_backend: backendId } 
+			}
+
+			return order
 		} catch (error: any) {
 			console.error('❌ Error guardando pedido:', error)
 			// Aquí podrías mostrar una notificación al usuario
@@ -672,6 +719,8 @@ function POSContent() {
 							onUpdateCliente={handleUpdateCliente}
 							onUpdateBodega={handleUpdateBodega}
 							onCancelOrder={cancelCurrentOrder}
+							selectedCliente={selectedCliente}
+  							selectedBodega={selectedBodega}
 						/>
 					</div>
 				</div>

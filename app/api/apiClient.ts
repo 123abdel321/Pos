@@ -23,17 +23,47 @@ apiClient.interceptors.request.use((config) => {
 
 // Interceptor para manejar errores de autenticación
 apiClient.interceptors.response.use(
-    (response) => response,
-    (error) => {
-        if (error.response?.status === 401) {
-            // Solo redirigir en el cliente
-            if (typeof window !== 'undefined') {
-                localStorage.removeItem('authToken');
-                window.location.href = '/login';
+  (response) => response,
+  (error) => {
+    if (typeof window !== "undefined") {
+      const errorData = error.response?.data
+      
+      if (errorData) {
+        let errorMessage = ''
+        
+        // Formatear el mensaje de error
+        if (typeof errorData.message === 'object') {
+          for (const field in errorData.message) {
+            const errores = errorData.message[field]
+            if (Array.isArray(errores)) {
+              errores.forEach((error: string) => {
+                errorMessage += `${field}: ${error}\n`
+              })
             }
+          }
+        } else if (typeof errorData.message === 'string') {
+          errorMessage = errorData.message
         }
-        return Promise.reject(error);
+        
+        // Disparar evento con tipo de error
+        window.dispatchEvent(new CustomEvent('showError', {
+          detail: { 
+            message: errorMessage,
+            type: 'error', // Puedes cambiar esto según el status code
+            autoClose: true,
+            duration: 5000
+          }
+        }))
+      }
+      
+      if (error.response?.status === 401) {
+        localStorage.removeItem('authToken')
+        window.location.href = '/login'
+      }
     }
-);
+    
+    return Promise.reject(error)
+  }
+)
 
 export default apiClient;
