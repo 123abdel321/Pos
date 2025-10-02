@@ -1,14 +1,15 @@
+// components/product-grid.tsx
+
 "use client"
 
-import { useState, useEffect, useRef } from "react" // 🔥 Agregar useRef
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Search, Package, Barcode } from "lucide-react" // 🔥 Agregar Barcode
+import { Search, Package, Barcode } from "lucide-react" 
 import { Producto, Familia } from '@/types/producto'
 import apiClient from "@/app/api/apiClient"
-
 interface ProductGridProps {
   onProductSelect: (product: Producto, quantity?: number) => void
 }
@@ -21,34 +22,25 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [loading, setLoading] = useState(true)
   const [searching, setSearching] = useState(false)
-  const searchInputRef = useRef<HTMLInputElement>(null) // 🔥 Ref para el input
+  const searchInputRef = useRef<HTMLInputElement>(null) 
 
-  // 🔥 Focus automático al cargar el componente
+  // Focus automático
   useEffect(() => {
     if (searchInputRef.current) {
       searchInputRef.current.focus()
     }
   }, [])
 
-  // 🔥 Focus cuando se hace clic en cualquier parte del grid (backup)
-  const handleGridClick = () => {
-    if (searchInputRef.current) {
-      searchInputRef.current.focus()
-    }
-  }
-
-  // Cargar familias y productos iniciales
+  // Cargar datos iniciales
   useEffect(() => {
     const loadInitialData = async () => {
       try {
         setLoading(true)
         
-        // Cargar familias
         const familiasResponse = await apiClient.get('/familia/combo-familia')
         const familiasData = familiasResponse.data.data || familiasResponse.data
         setFamilias(Array.isArray(familiasData) ? familiasData : [])
         
-        // Cargar productos
         const productosResponse = await apiClient.get('/producto/combo-producto')
         const productosData = productosResponse.data.data || productosResponse.data
         setProductos(Array.isArray(productosData) ? productosData : [])
@@ -62,7 +54,6 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
       } finally {
         setLoading(false)
         
-        // 🔥 Focus después de cargar
         setTimeout(() => {
           if (searchInputRef.current) {
             searchInputRef.current.focus()
@@ -74,10 +65,9 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
     loadInitialData()
   }, [])
 
-  // Búsqueda en tiempo real - MODIFICADO
+  // Lógica de búsqueda con debounce
   useEffect(() => {
     const searchProducts = async () => {
-      // Si no hay término, cargar TODOS los productos
       if (!searchTerm.trim()) {
         setSearching(true)
         try {
@@ -93,7 +83,6 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
         return
       }
 
-      // Si hay término de búsqueda
       try {
         setSearching(true)
         const response = await apiClient.get('/producto/combo-producto', {
@@ -116,29 +105,7 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
     return () => clearTimeout(timeoutId)
   }, [searchTerm])
 
-  // 🔥 Manejar el evento keydown para shortcuts
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Ctrl + / para focus (común en muchos sistemas)
-    console.log('e.ctrlKey: ',e.ctrlKey);
-    console.log('e.key: ',e.key);
-    if (e.ctrlKey && e.key === 'b') {
-      console.log('si??');
-      e.preventDefault()
-      if (searchInputRef.current) {
-        searchInputRef.current.focus()
-      }
-    }
-    
-    // Escape para limpiar búsqueda
-    if (e.key === 'Escape') {
-      setSearchTerm("")
-      if (searchInputRef.current) {
-        searchInputRef.current.focus()
-      }
-    }
-  }
-
-  // Filtrar productos por categoría
+  // Lógica de filtrado por categoría
   useEffect(() => {
     let filtered = productos
 
@@ -150,8 +117,24 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
 
     setFilteredProducts(filtered)
   }, [productos, selectedCategory])
+  
+  // Handlers y Helpers
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.ctrlKey && e.key === '/') { 
+      e.preventDefault()
+      if (searchInputRef.current) {
+        searchInputRef.current.focus()
+      }
+    }
+    
+    if (e.key === 'Escape') {
+      setSearchTerm("")
+      if (searchInputRef.current) {
+        searchInputRef.current.focus()
+      }
+    }
+  }
 
-  // Generar categorías desde las familias
   const categories = [
     { id: "todos", name: "TODOS", active: true },
     ...familias.map(familia => ({
@@ -168,10 +151,9 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
     }).format(Number.parseFloat(price))
   }
 
-  const getStockStatus = (quantity: string) => {
-    const stock = Number.parseFloat(quantity)
-    if (stock <= 0) return { color: "destructive", text: "Sin stock" }
-    if (stock <= 5 && stock > 0) return { color: "warning", text: "Poco stock" }
+  const getStockStatus = (quantity: number) => {
+    if (quantity <= 0) return { color: "destructive", text: "Sin stock" }
+    if (quantity <= 5 && quantity > 0) return { color: "warning", text: "Poco stock" }
     return { color: "success", text: "En stock" }
   }
 
@@ -185,22 +167,24 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
     return inventarios.reduce((total, inv) => total + Number.parseFloat(inv.cantidad), 0)
   }
 
-  return (
-    <div className="p-4"> {/* 🔥 Click en grid para focus */}
+  // 🔥 FIX DE SINTAXIS APLICADO: El paréntesis de apertura se coloca
+  // en la misma línea que 'return' para evitar el error de ASI.
+  return ( 
+    <div className="p-3 sm:p-4"> {/* Menos padding en móvil */}
       {/* Search MEJORADO para código de barras */}
       <div className="relative mb-4">
         <div className="flex items-center gap-2">
-          <Barcode className="h-5 w-5 text-primary" /> {/* 🔥 Icono de código de barras */}
+          <Barcode className="h-5 w-5 text-primary" />
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              ref={searchInputRef} // 🔥 Ref para auto-focus
+              ref={searchInputRef}
               placeholder="Escanear código de barras o buscar producto..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyDown={handleKeyDown} // 🔥 Shortcuts de teclado
-              className="pl-10 pr-10 text-lg py-2" // 🔥 Texto más grande para mejor visibilidad
-              autoFocus // 🔥 Auto-focus nativo
+              onKeyDown={handleKeyDown}
+              className="pl-10 pr-10 text-base py-2 h-10 sm:text-lg sm:h-12" 
+              autoFocus
             />
             {(searching || (searchTerm === "" && loading)) && (
               <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -210,15 +194,15 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
           </div>
         </div>
         
-        {/* 🔥 Indicador de shortcuts */}
+        {/* Indicador de shortcuts */}
         <div className="text-xs text-muted-foreground mt-1 flex justify-between">
           <span>Presiona Esc para limpiar</span>
           <span>Ctrl + / para focus</span>
         </div>
       </div>
 
-      {/* Resto del código permanece igual */}
-      <div className="flex flex-wrap gap-1 mb-4">
+      {/* Categorías */}
+      <div className="flex flex-wrap gap-1 mb-4 max-h-16 overflow-y-auto">
         <span
           onClick={() => setSelectedCategory("todos")}
           className={`inline-flex items-center px-2 py-1 rounded-full text-xs cursor-pointer transition-colors ${
@@ -229,7 +213,7 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
         >
           TODOS
         </span>
-        {categories.slice(1, 12).map((category) => (
+        {categories.slice(1, 15).map((category) => ( 
           <span
             key={category.id}
             onClick={() => setSelectedCategory(category.id)}
@@ -242,17 +226,17 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
             {category.name.split(' ')[0]}
           </span>
         ))}
-        {categories.length > 12 && (
+        {categories.length > 15 && (
           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-muted text-muted-foreground">
-            +{categories.length - 12}
+            +{categories.length - 15}
           </span>
         )}
       </div>
 
       {/* Products Count */}
-      <div className="mb-4 flex justify-between items-center">
-        <p className="text-sm text-muted-foreground">
-          Productos: {filteredProducts.length}
+      <div className="mb-4 flex justify-between items-center border-b pb-2">
+        <p className="text-sm font-semibold text-foreground">
+          Productos encontrados: {filteredProducts.length}
         </p>
         {searchTerm && (
           <Button 
@@ -271,9 +255,9 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
         )}
       </div>
 
-      {/* Products Grid */}
+      {/* Products Grid - CLASES RESPONSIVAS AJUSTADAS */}
       {loading || searching ? (
-        <div className="grid grid-cols-2 min-[480px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3"> {/* Ajustes de columnas */}
           {Array.from({ length: 10 }).map((_, i) => (
             <Card key={i} className="p-4 animate-pulse">
               <div className="h-24 bg-muted rounded mb-3"></div>
@@ -284,7 +268,7 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 min-[480px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3"> {/* AJUSTE DE RESPONSIVIDAD */}
           {filteredProducts.map((product) => {
             const totalStock = getTotalStock(product.inventarios)
             const stockStatus = getStockStatus(totalStock)
@@ -292,18 +276,18 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
             return (
               <Card
                 key={product.id}
-                className="cursor-pointer transition-all hover:shadow-lg group border overflow-hidden grid grid-rows-[120px_1fr] h-full"
+                className="cursor-pointer transition-all hover:shadow-lg group border overflow-hidden grid grid-rows-[100px_1fr] h-full"
                 onClick={(e) => {
-                  e.stopPropagation() // ← ESTO ES IMPORTANTE
+                  e.stopPropagation()
                   onProductSelect(product)
-                  // Re-focus al input después de seleccionar producto
+                  
                   setTimeout(() => {
                     searchInputRef.current?.focus()
                   }, 100)
                 }}
               >
                 {/* Header con Imagen, Familia y Código */}
-                <div className="h-32 bg-muted relative overflow-hidden">
+                <div className="h-24 bg-muted relative overflow-hidden"> 
                   {product.familia?.nombre && (
                     <div className="absolute top-1 left-1 bg-black/40 text-white text-[10px] px-2 py-0.5 rounded-sm z-10 font-medium uppercase tracking-wider backdrop-blur-[1px]">
                       {product.familia.nombre}
@@ -325,28 +309,28 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
                     />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <Package className="h-12 w-12 text-muted-foreground" />
+                      <Package className="h-10 w-10 text-muted-foreground" />
                     </div>
                   )}
                 </div>
 
                 {/* Contenido */}
-                <div className="p-3 grid grid-rows-[auto_1fr_auto] gap-1 h-full">
-                  <h3 className="font-bold text-sm line-clamp-2 leading-snug text-center min-h-[2.5rem] flex items-center justify-center">
+                <div className="p-2 grid grid-rows-[auto_1fr_auto] gap-1 h-full"> 
+                  <h3 className="font-bold text-xs line-clamp-2 leading-snug text-center min-h-[2rem] flex items-center justify-center"> 
                     {product.nombre}
                   </h3>
 
                   {/* Ajuste de precio mejorado */}
                   <div className="text-center flex items-center justify-center py-1">
                     {(() => {
-                      const precioNumber = Number(product.precio); // Aseguramos número
+                      const precioNumber = Number(product.precio);
                       const formattedPrice = formatPrice(`${precioNumber}`);
-                      const isHighPrice = precioNumber >= 1000000; // Más de un millón
+                      const isHighPrice = precioNumber >= 1000000;
 
                       return (
                         <div
                           className={`${
-                            isHighPrice ? "text-base" : "text-xl"
+                            isHighPrice ? "text-base" : "text-lg" 
                           } font-bold text-primary/90 transition-opacity duration-300 group-hover:text-primary`}
                         >
                           {formattedPrice}
@@ -368,7 +352,7 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
                     <span className="text-xs text-muted-foreground flex-1">
                       {stockStatus.text}
                     </span>
-                    <span className="text-sm font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                    <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded"> 
                       {totalStock}
                     </span>
                   </div>
