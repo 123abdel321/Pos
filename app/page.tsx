@@ -138,6 +138,37 @@ function POSContent() {
 		}
 	}, [currentOrder, selectedBodega]);
 
+	// 🔥 NUEVO EFFECT PARA CARGAR ÓRDENES DEL BACKEND
+	useEffect(() => {
+		const loadOrders = async () => {
+			try {
+				// Cargar solo las órdenes pendientes/activas (puedes ajustar los parámetros si el backend lo permite)
+				const response = await apiClient.get('/pos/pedidos'); 
+				
+				const backendOrders = response.data.data || [];
+				
+				const newOrders = backendOrders.map(mapBackendOrderToFrontend);
+				
+				// Reemplazar las órdenes locales (que antes se perdían) con las del backend
+				setOrders(newOrders);
+				console.log(`📥 Pedidos cargados desde backend: ${newOrders.length}`);
+
+				// Si no hay currentOrder, seleccionar el primero de los pendientes, o crear uno nuevo
+				if (!currentOrder && newOrders.length > 0) {
+					setCurrentOrder(newOrders[0]);
+				} else if (!currentOrder) {
+					// Opcional: crea una nueva orden automáticamente si no hay ninguna
+					// createNewOrder();
+				}
+
+			} catch (error) {
+				console.error('❌ Error cargando pedidos desde el backend:', error);
+			}
+		};
+
+		loadOrders();
+	}, []);
+
 	// Si no está autenticado, mostrar página de login
 	if (!isAuthenticated && !loading) {
 		return <LoginPage />
@@ -154,6 +185,42 @@ function POSContent() {
 			</div>
 		)
 	}
+
+	const mapBackendOrderToFrontend = (backendOrder: any): Order => {
+		const frontendItems: OrderItem[] = (backendOrder.detalles || []).map((detalle: any, index: number): OrderItem => ({
+			consecutivo: index + 1,
+			id_producto: detalle.id_producto,
+			nombre: detalle.descripcion,
+			cantidad: Number.parseFloat(detalle.cantidad),
+			costo: Number.parseFloat(detalle.costo),
+			subtotal: Number.parseFloat(detalle.subtotal),
+			descuento_porcentaje: Number.parseFloat(detalle.descuento_porcentaje),
+			descuento_valor: Number.parseFloat(detalle.descuento_valor),
+			iva_porcentaje: Number.parseFloat(detalle.iva_porcentaje),
+			iva_valor: Number.parseFloat(detalle.iva_valor),
+			total: Number.parseFloat(detalle.total),
+			concepto: "",
+		}));
+
+		// Sumar IVAs de los detalles para obtener el total_iva de la cabecera
+		const totalIva = frontendItems.reduce((sum, item) => sum + item.iva_valor, 0);
+
+		return {
+			// ID temporal único basado en el ID real del backend
+			id: `order-${backendOrder.id}`, 
+			id_backend: backendOrder.id, // ID real del backend
+			id_ubicacion: backendOrder.id_ubicacion,
+			// Usar el nombre del cliente o un valor por defecto si no está
+			ubicacion_nombre: backendOrder.cliente?.nombre_completo.trim() || "Pedido Web", 
+			productos: frontendItems,
+			subtotal: Number.parseFloat(backendOrder.subtotal),
+			iva: totalIva,
+			total: Number.parseFloat(backendOrder.total_factura),
+			fecha: backendOrder.created_at,
+			// Mapear estado: 1 (pendiente/activo) -> "pendiente", otro -> "completado"
+			estado: backendOrder.estado === 1 ? "pendiente" : "completado",
+		};
+	};
 
 	const createNewOrder = async (locationId?: number, locationName?: string) => {
 		// 🔥 CARGAR CLIENTE POR DEFECTO SIEMPRE AL CREAR NUEVO PEDIDO
@@ -184,14 +251,17 @@ function POSContent() {
 			fecha: new Date().toISOString(),
 			estado: "pendiente",
 		}
-		
-		setCurrentOrder(newOrder)
-		setOrders((prev) => [...prev, newOrder])
+
+		setOrders((prev) => {
+			const existing = prev.filter(o => o.id_backend !== null);
+			return [...existing, newOrder]; // Mantener solo las que tienen ID de backend y el nuevo
+		});
+		setCurrentOrder(newOrder);
 		
 		// ✅ GUARDAR EL NUEVO PEDIDO CON EL CLIENTE POR DEFECTO
 		try {
 			const savedOrder = await saveOrderToBackend(newOrder, clienteDefault, selectedBodega)
-			console.log('savedOrder: ',savedOrder);
+			
 			if (savedOrder?.id_backend) {
 				const orderWithBackendId = { ...newOrder, id_backend: savedOrder.id_backend }
 				setCurrentOrder(orderWithBackendId)
@@ -317,13 +387,9 @@ function POSContent() {
 			const response = await apiClient.post('/pos/pedido', payload)
 			console.log('✅ Pedido guardado:', response.data)
 
-			const backendId = response.data.data?.id
-			if (backendId) {
-				// Retorna el objeto de la orden con el id_backend para actualización local
-				return { ...order, id_backend: backendId } 
-			}
-
-			return order
+			const backendId = response.data.data?.id 
+			return { ...order, id_backend: backendId || order.id_backend }
+			
 		} catch (error: any) {
 			console.error('❌ Error guardando pedido:', error)
 			// Aquí podrías mostrar una notificación al usuario
