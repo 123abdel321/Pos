@@ -51,7 +51,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 	}, []);
 
 	const checkToken = async () => {
-		console.log('🔍 Iniciando checkToken, validating:', validating);
 		if (validating) {
 			console.log('⏳ Validación en curso, skipping...');
 			return;
@@ -60,10 +59,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 		setValidating(true);
 		try {
 			const token = getToken();
-			console.log('🔑 Token obtenido:', token ? `${token.substring(0, 10)}...` : 'NULL');
-			
+
 			if (token) {
-				console.log('🚀 Haciendo petición a /pos/validate...');
 				
 				// Asegurar que el token esté en localStorage para el interceptor
 				if (typeof window !== 'undefined') {
@@ -76,12 +73,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 					}
 				});
 				
-				console.log('✅ Respuesta del servidor:', response.data);
 				if (response.data.success) {
 					setIsAuthenticated(true);
 					setUser(response.data.user);
 					setAuth(token, response.data.user);
-					console.log('🎉 Usuario autenticado correctamente');
 					
 					// 👇 GUARDAR CLIENTE POR DEFECTO EN LOCALSTORAGE
 					if (response.data.data?.cliente) {
@@ -105,16 +100,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 						};
 						
 						localStorage.setItem('clientePorDefecto', JSON.stringify(clienteDefault));
-						console.log('💾 Cliente por defecto guardado:', clienteDefault.nombre_completo);
 					}
 				} else {
-					console.log('❌ Servidor respondió con success: false');
 					clearAuth();
 					setIsAuthenticated(false);
 					setUser(null);
 				}
 			} else {
-				console.log('💡 No hay token, usuario no autenticado');
 				setIsAuthenticated(false);
 				setUser(null);
 			}
@@ -137,7 +129,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 		} finally {
 			setLoading(false);
 			setValidating(false);
-			console.log('🏁 checkToken finalizado');
 		}
 	};
 
@@ -146,7 +137,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 		
 		setValidating(true);
 		try {
-			console.log('🔐 Iniciando login con token...');
 			
 			// Guardar el token inmediatamente
 			setAuth(token, { id: 0, name: '', email: '' });
@@ -157,7 +147,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 				}
 			});
 			
-			console.log('✅ Login response:', response.data);
 			if (response.data.success) {
 				setAuth(token, response.data.user);
 				setIsAuthenticated(true);
@@ -184,7 +173,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 	};
 
 	const logout = () => {
-		console.log('👋 Cerrando sesión...');
 		clearAuth();
 		setIsAuthenticated(false);
 		setUser(null);

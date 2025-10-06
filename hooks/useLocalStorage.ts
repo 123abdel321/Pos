@@ -15,12 +15,10 @@ export const useLocalStorage = <T>(key: string, initialValue: T) => {
 
         try {
             const item = window.localStorage.getItem(key);
-            console.log(`📖 Leyendo localStorage key "${key}":`, item);
             if (item) {
                 setStoredValue(JSON.parse(item));
             }
         } catch (error) {
-            console.error(`❌ Error reading localStorage key "${key}":`, error);
         }
     }, [key, isClient]);
 
@@ -31,7 +29,6 @@ export const useLocalStorage = <T>(key: string, initialValue: T) => {
             const valueToStore = value instanceof Function ? value(storedValue) : value;
             setStoredValue(valueToStore);
             window.localStorage.setItem(key, JSON.stringify(valueToStore));
-            console.log(`💾 Guardando en localStorage key "${key}":`, valueToStore);
         } catch (error) {
             console.error(`❌ Error setting localStorage key "${key}":`, error);
         }
@@ -43,7 +40,6 @@ export const useLocalStorage = <T>(key: string, initialValue: T) => {
         try {
             setStoredValue(initialValue);
             window.localStorage.removeItem(key);
-            console.log(`🗑️ Eliminando localStorage key "${key}"`);
         } catch (error) {
             console.error(`❌ Error removing localStorage key "${key}":`, error);
         }

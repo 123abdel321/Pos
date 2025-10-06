@@ -27,7 +27,7 @@ apiClient.interceptors.response.use(
   (error) => {
     if (typeof window !== "undefined") {
       const errorData = error.response?.data
-      
+      console.log('error: ',error);
       if (errorData) {
         let errorMessage = ''
         

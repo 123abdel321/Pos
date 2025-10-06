@@ -243,7 +243,7 @@ export function OrderPanel({
                             {currentOrder.productos.length} items
                         </div>
 
-                        <div className="space-y-2 flex-shrink-0 w-full">
+                        <div className="space-y-2 flex-shrink-0 w-full mb-17">
                             <div className="text-center text-[20px] font-bold text-primary transform -rotate-90 origin-center w-full my-6">
                                 {formatPrice(currentOrder.total)}
                             </div>
@@ -264,7 +264,7 @@ export function OrderPanel({
                 {currentOrder && isExpanded && (
                     // 🔥 CORRECCIÓN CLAVE: Usamos un DIV como contenedor Flex Column
                     // para distribuir correctamente el espacio entre 2.1 (fijo), 2.2 (scroll) y 2.3 (fijo).
-                    <div className="flex-1 flex flex-col min-h-0 max-h-149"> 
+                    <div className="flex-1 flex flex-col min-h-0"> 
                         
                         {/* 2.1 Selectores de Cliente/Bodega - FLEX-SHRINK-0 (Altura Fija) */}
                         <div className="p-2 border-b border-border flex-shrink-0">
@@ -421,7 +421,7 @@ export function OrderPanel({
                         </div>
 
                         {/* 2.2 Order Items - FLEX-1 OVERFLOW-Y-AUTO (Ahora maneja el scroll) */}
-                        <div className="flex-1 overflow-y-auto min-h-0">
+                        <div className="flex-1 overflow-y-auto">
                             <div className="p-2">
                                 {currentOrder.productos.length === 0 ? (
                                     <div className="text-center py-4">
@@ -506,10 +506,28 @@ export function OrderPanel({
                                     <span>Subtotal:</span>
                                     <span>{formatPrice(currentOrder.subtotal)}</span>
                                 </div>
-                                <div className="flex justify-between text-xs">
-                                    <span>IVA ({currentOrder.productos.length > 0 ? currentOrder.productos[0].iva_porcentaje : 0}%):</span>
-                                    <span>{formatPrice(currentOrder.iva)}</span>
-                                </div>
+
+                                {/* 🔥 MOSTRAR DESGLOSE DE IVA POR TASAS */}
+                                {currentOrder?.iva_desglose && 
+                                    Object.entries(currentOrder.iva_desglose)
+                                        // 🔥 MODIFICACIÓN CLAVE: Filtrar para que la 'tasa' sea mayor a 0
+                                        .filter(([tasa]) => parseFloat(tasa) > 0)
+                                        .map(([tasa, valor]) => (
+                                            <div key={tasa} className="flex justify-between text-xs text-muted-foreground">
+                                                <span>IVA ({tasa}%):</span>
+                                                <span>{formatPrice(valor)}</span>
+                                            </div>
+                                        ))
+                                }
+
+                                {/* 🔥 MOSTRAR RETENCIÓN SI EXISTE */}
+                                {currentOrder.retencion > 0 && (
+                                    <div className="flex justify-between text-xs text-muted-foreground">
+                                        <span>Retención ({currentOrder.porcentaje_retencion}%) :</span>
+                                        <span>{formatPrice(currentOrder.retencion)}</span>
+                                    </div>
+                                )}
+
                                 <Separator />
                                 <div className="flex justify-between text-sm font-bold">
                                     <span>Total:</span>
@@ -517,7 +535,7 @@ export function OrderPanel({
                                 </div>
                             </div>
 
-                            <div className="space-y-1">
+                            <div className="space-y-1 mb-17">
                                 <Button
                                     onClick={onCompleteOrder}
                                     disabled={currentOrder.productos.length === 0}
@@ -550,7 +568,7 @@ export function OrderPanel({
                 )}
 
                 {!currentOrder && isExpanded && (
-                    <div className="flex-1 flex items-center justify-center p-8">
+                    <div className="flex-1 flex items-center justify-center min-h-0">
                         <div className="text-center">
                             <ShoppingCart className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                             <h3 className="text-lg font-medium text-foreground mb-2">No hay pedido activo</h3>

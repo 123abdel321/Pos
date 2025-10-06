@@ -37,19 +37,29 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-
-// 🔥 NUEVO COMPONENTE LATERAL IZQUIERDO
 import { OrdersManagerPanel } from "@/components/OrdersManagerPanel" 
 
-
-// --- INTERFACES (Definiciones para que el código compile) ---
+// --- INTERFACES ---
 export interface Product {
 	id: number
 	codigo: string
 	nombre: string
 	precio: string
 	inventarios: Array<{ cantidad: string }>
-	familia: { nombre: string }
+	familia: {
+		nombre: string
+		cuenta_venta_iva?: {
+			impuesto?: {
+				porcentaje: number
+			}
+		}
+		cuenta_venta_retencion?: {
+			impuesto?: {
+				porcentaje: number
+				base: number
+			}
+		}
+	}
 }
 
 export interface OrderItem {
@@ -63,21 +73,27 @@ export interface OrderItem {
 	descuento_valor: number
 	iva_porcentaje: number
 	iva_valor: number
+	retencion_porcentaje: number
+	retencion_valor: number
 	total: number
 	concepto: string
 }
 
 export interface Order {
-	id: string
-	id_backend: number | null
-	id_ubicacion: number | null
-	ubicacion_nombre: string
-	productos: OrderItem[]
-	subtotal: number
-	iva: number
-	total: number
-	fecha: string
-	estado: "pendiente" | "completado"
+    id: string
+    id_backend: number | null
+    id_ubicacion: number | null
+    id_bodega: number | null
+    ubicacion_nombre: string
+    productos: OrderItem[]
+    subtotal: number
+    iva: number
+    retencion: number
+	porcentaje_retencion: number | null,
+    total: number
+    fecha: string
+    estado: "pendiente" | "completado"
+    iva_desglose?: { [key: number]: number }
 }
 
 export interface Cliente {
@@ -116,42 +132,122 @@ export interface Bodega {
 	text: string
 }
 
-// Interfaz para la respuesta del backend
 export interface BackendPedido {
-	id: number;
-	consecutivo: string;
-	subtotal: string;
-	total_iva: string;
-	total_factura: string;
-	created_at: string;
-	estado: number; 
-	id_ubicacion: number | null;
-	cliente: { nombre_completo: string };
-	detalles: any[];
+	id: number
+	consecutivo: string
+	subtotal: string
+	total_iva: string
+	total_factura: string
+	total_rete_fuente: string
+	porcentaje_rete_fuente: string
+	created_at: string
+	estado: number;
+	id_ubicacion: number | null
+	cliente: { nombre_completo: string }
+	iva_desglose?: { [key: number]: number }
+	detalles: any[]
 }
 
+// Interfaz para la configuración de validación
+interface ValidationConfig {
+	iva_incluido: boolean
+}
 
 function POSContent() {
 	const [selectedLocation, setSelectedLocation] = useState<Ubicacion | null>(null);
 	const [currentOrder, setCurrentOrder] = useState<Order | null>(null)
 	const [orders, setOrders] = useState<Order[]>([])
-	const [showOrdersTable, setShowOrdersTable] = useState(false) // Necesario para el menú
+	const [showOrdersTable, setShowOrdersTable] = useState(false)
 	const [showPaymentModal, setShowPaymentModal] = useState(false) 
 	const { theme, setTheme } = useTheme()
 	const { user, logout, isAuthenticated, loading } = useAuth()
 	const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null)
 	const [selectedBodega, setSelectedBodega] = useState<Bodega | null>(null)
+	
+	// 🔥 NUEVOS ESTADOS PARA LA CONFIGURACIÓN
+	const [ivaIncluido, setIvaIncluido] = useState<boolean>(false)
+	const [porcentajeRetencion, setPorcentajeRetencion] = useState<number>(0)
+	const [topeRetencion, setTopeRetencion] = useState<number>(0)
+	const [validationConfig, setValidationConfig] = useState<ValidationConfig | null>(null)
+
+	// 🔥 CARGAR CONFIGURACIÓN AL INICIAR
+	useEffect(() => {
+		const loadValidationConfig = async () => {
+			try {
+				const response = await apiClient.get('/pos/validate')
+				const config: ValidationConfig = response.data.data
+				const estadoIvaInlucido = config.iva_incluido
+
+				setValidationConfig(config)
+				setIvaIncluido(estadoIvaInlucido || false)
+
+			} catch (error) {
+				console.error('❌ Error cargando configuración:', error)
+				// setIvaIncluido(false)
+			}
+		}
+
+		loadValidationConfig()
+	}, [])
 
 	const handleLogout = () => {
 		logout();
 	};
 	
-	// Función helper para calcular los totales de la orden
 	const calculateOrderTotals = (order: Order): Order => {
-		const subtotal = order.productos.reduce((sum, item) => sum + item.subtotal, 0)
-		const iva = order.productos.reduce((sum, item) => sum + item.iva_valor, 0)
-		const total = subtotal + iva
-		return { ...order, subtotal, iva, total }
+		console.log('calculateOrderTotals: ',order)
+		let iva = 0;
+		let retencion = 0;
+		let descuento = 0;
+		let total = 0;
+		let valorBruto = 0;
+		let redondeo = 0;
+
+		// Calcular valores base (IGUAL A TU JAVASCRIPT)
+		order.productos.forEach(producto => {
+			iva += producto.iva_valor;
+			descuento += producto.descuento_valor;
+			valorBruto += (producto.cantidad * producto.costo) - producto.descuento_valor;
+		});
+		console.log('iva: ',iva);
+		console.log('descuento: ',descuento);
+		console.log('valorBruto: ',valorBruto);
+		// Ajustar valorBruto si el IVA está incluido (IGUAL A TU JAVASCRIPT)
+		if (ivaIncluido) valorBruto -= iva;
+
+		total = ivaIncluido ? valorBruto : valorBruto + iva;
+
+		// Calcular retención (IGUAL A TU JAVASCRIPT)
+		if (total >= topeRetencion) {
+			retencion = porcentajeRetencion ? (valorBruto * porcentajeRetencion) / 100 : 0;
+		}
+
+		// Ajuste final del total (IGUAL A TU JAVASCRIPT)
+		if (ivaIncluido) total = total + iva;
+
+		const ivaPorTasas = order.productos.reduce((acc, item) => {
+			const tasa = item.iva_porcentaje;
+
+			if (tasa === 0) {
+				return acc;
+			}
+
+			if (!acc[tasa]) {
+				acc[tasa] = 0;
+			}
+
+			acc[tasa] += item.iva_valor;
+			return acc;
+		}, {} as { [key: number]: number });
+		
+		return { 
+			...order, 
+			subtotal: valorBruto, 
+			iva, 
+			retencion, 
+			total,
+			iva_desglose: ivaPorTasas
+		};
 	}
 
 	// Función de mapeo envuelta en useCallback
@@ -160,6 +256,8 @@ function POSContent() {
 			const subtotalNum = Number.parseFloat(detalle.subtotal || '0');
 			const ivaValorNum = Number.parseFloat(detalle.iva_valor || '0');
 			const totalNum = Number.parseFloat(detalle.total || '0');
+			const retencionValorNum = Number.parseFloat(detalle.retencion_valor || '0');
+			const retencionPorcentajeNum = Number.parseFloat(detalle.retencion_porcentaje || '0');
 			
 			return {
 				consecutivo: index + 1,
@@ -172,33 +270,105 @@ function POSContent() {
 				descuento_valor: Number.parseFloat(detalle.descuento_valor || '0'),
 				iva_porcentaje: Number.parseFloat(detalle.iva_porcentaje || '0'),
 				iva_valor: ivaValorNum,
+				retencion_porcentaje: retencionPorcentajeNum,
+				retencion_valor: retencionValorNum,
 				total: totalNum,
 				concepto: "",
 			}
 		});
 
+		var ivaCalculo = 0
+		var retencionCalculo = 0
+		var descuentoCalculo = 0
+		var totalCalculo = 0
+		var redondeoCalculo = 0
+		var valorBrutoCalculo = 0
+
+		for (let index = 0; index < backendOrder.detalles.length; index++) {
+			const producto = backendOrder.detalles[index];
+
+			let impuestoPorcentaje = 0;
+            let topeValor = 0;
+
+			console.log('producto: ',producto);
+			console.log('producto: ',producto.cuenta_retencion);
+
+			if (producto.cuenta_retencion && producto.cuenta_retencion.impuesto) {
+            	impuestoPorcentaje = parseFloat(producto.cuenta_retencion.impuesto.porcentaje);
+            	topeValor = parseFloat(producto.cuenta_retencion.impuesto.base);
+            }
+
+			if (impuestoPorcentaje > porcentajeRetencion) {
+				setPorcentajeRetencion(impuestoPorcentaje)
+				setTopeRetencion(topeValor)
+            }
+
+			ivaCalculo+= parseFloat(producto.iva_valor)
+			descuentoCalculo+= parseFloat(producto.descuento_valor)
+			valorBrutoCalculo+= (parseFloat(producto.cantidad) * parseFloat(producto.costo)) - parseFloat(producto.descuento_valor)
+		}
+
+		if (ivaIncluido) {
+			valorBrutoCalculo-= ivaCalculo;
+		}
+
+		totalCalculo = ivaIncluido ? valorBrutoCalculo : valorBrutoCalculo + ivaCalculo;
+		if (totalCalculo >= topeRetencion) {
+			retencionCalculo = porcentajeRetencion ? (valorBrutoCalculo * porcentajeRetencion) / 100 : 0;
+		}
+
+		if (ivaIncluido) {
+			totalCalculo = totalCalculo + ivaCalculo;
+		}
+
+		console.log('ivaCalculo: ',ivaCalculo);
+		console.log('retencionCalculo: ',retencionCalculo);
+		console.log('descuentoCalculo: ',descuentoCalculo);
+		console.log('totalCalculo: ',totalCalculo);
+		console.log('redondeoCalculo: ',redondeoCalculo);
+		console.log('valorBrutoCalculo: ',valorBrutoCalculo);
+
 		const totalIva = frontendItems.reduce((sum, item) => sum + item.iva_valor, 0);
+		// 🔥 CALCULAR IVA AGRUPADO POR TASA
+		const ivaPorTasas = backendOrder.detalles.reduce((acc, item) => {
+			const tasa = item.iva_porcentaje;
+
+			if (tasa === 0) {
+				return acc;
+			}
+
+			if (!acc[tasa]) {
+				acc[tasa] = 0;
+			}
+
+			acc[tasa] += item.iva_valor;
+			return acc;
+		}, {} as { [key: number]: number });
 
 		return {
 			id: `order-${backendOrder.id}`, 
 			id_backend: backendOrder.id, 
 			id_ubicacion: backendOrder.id_ubicacion,
+			id_bodega: selectedBodega ? selectedBodega.id: null,
 			ubicacion_nombre: backendOrder.cliente?.nombre_completo.trim() || "Pedido Mostrador", 
 			productos: frontendItems,
 			subtotal: Number.parseFloat(backendOrder.subtotal),
 			iva: totalIva,
-			total: Number.parseFloat(backendOrder.total_factura),
+			retencion: Number.parseFloat(backendOrder.total_rete_fuente),
+			porcentaje_retencion: Number.parseFloat(backendOrder.porcentaje_rete_fuente),
+			total: valorBrutoCalculo,
 			fecha: backendOrder.created_at,
+			iva_desglose: ivaPorTasas,
 			estado: backendOrder.estado === 1 ? "pendiente" : "completado",
 		};
 	}, []);
 	
-	// Función para guardar en el backend (LA DEJAMOS IGUAL)
+	// Función para guardar en el backend
 	const saveOrderToBackend = async (order: Order, cliente: Cliente | null, bodega: Bodega | null): Promise<Order> => {
 		try {
-			// Asumiendo que el cliente por defecto es siempre id=1 si no hay uno seleccionado
 			const clienteId = cliente?.id?.toString() || "1"
 			const bodegaId = bodega?.id?.toString() || "1"
+			console.log('order: ',order);
 
 			const payload = {
 				productos: order.productos.map(p => ({
@@ -210,6 +380,8 @@ function POSContent() {
 					descuento_valor: p.descuento_valor.toString(),
 					iva_porcentaje: p.iva_porcentaje.toString(),
 					iva_valor: p.iva_valor.toString(),
+					retencion_porcentaje: p.retencion_porcentaje.toString(),
+					retencion_valor: p.retencion_valor.toString(),
 					total: p.total.toString(),
 				})),
 				id_ubicacion: order.id_ubicacion,
@@ -230,12 +402,30 @@ function POSContent() {
 			
 		} catch (error: any) {
 			console.error('❌ Error guardando pedido:', error)
-			// Aquí manejarías un error de sincronización
-			return order // Devuelve la orden sin el ID de backend si falla la sincronización
+			return order
+		}
+	}
+
+	const saveSaleToBackend = async (order: Order, paymentData: any): Promise<Order> => {
+		try {
+			paymentData.id_cliente = selectedCliente ? selectedCliente.id : null
+			
+			const response = await apiClient.post('/pos/venta', paymentData)
+			const backendId = response.data.data?.id 
+			
+			return { 
+				...order,
+				id_backend: backendId || order.id_backend,
+				estado: "completado"
+			}
+			
+		} catch (error: any) {
+			console.error('❌ Error guardando pedido:', error)
+			return order
 		}
 	}
 	
-	// 🔥 FUNCIÓN CENTRAL DE ACTUALIZACIÓN (LOCAL Y REMOTA)
+	// 🔥 FUNCIÓN CENTRAL DE ACTUALIZACIÓN
 	const updateOrderLocallyAndRemotely = useCallback(async (updatedOrder: Order) => {
         setCurrentOrder(updatedOrder);
         setOrders(prev => prev.map(o => (o.id === updatedOrder.id ? updatedOrder : o)));
@@ -273,13 +463,14 @@ function POSContent() {
 			try {
 				const response = await apiClient.get('/pos/pedidos'); 
 				const backendOrders: BackendPedido[] = response.data.data || [];
-				
+				const detailsOrder = response.data.data.length ? response.data.data[0].detalles : []
+				console.log('detailsOrder ??: ',detailsOrder);
 				const newOrders = backendOrders
 					.filter(o => o.estado === 1) 
 					.map(mapBackendOrderToFrontend);
-				
+
+				console.log('newOrders: ',newOrders);
 				setOrders(newOrders);
-				console.log(`📥 Pedidos cargados desde backend: ${newOrders.length}`);
 
 				if (!currentOrder && newOrders.length > 0) {
 					setCurrentOrder(newOrders[0]);
@@ -304,11 +495,14 @@ function POSContent() {
 		const newOrder: Order = {
 			id: `order-${Date.now()}`,
 			id_backend: null,
+			id_bodega: selectedBodega ? selectedBodega.id : null,
 			id_ubicacion: locationId || null,
 			ubicacion_nombre: locationName || "Mostrador",
 			productos: [],
 			subtotal: 0,
 			iva: 0,
+			retencion: 0,
+			porcentaje_retencion: 0,
 			total: 0,
 			fecha: new Date().toISOString(),
 			estado: "pendiente",
@@ -329,46 +523,75 @@ function POSContent() {
 		}
 	}
 	
+	// 🔥 FUNCIÓN MEJORADA PARA AGREGAR PRODUCTOS CON LA LÓGICA DE IVA
 	const addProductToOrder = async (product: Product, quantity = 1) => {
-		// Crea una nueva orden si no hay una activa
 		if (!currentOrder) {
 			await createNewOrder(selectedLocation?.id, selectedLocation?.nombre)
-			// Espera un ciclo para que currentOrder se actualice antes de continuar
 			return
 		}
-
+		
 		const existingProductIndex = currentOrder.productos.findIndex((item) => item.id_producto === product.id)
 		let updatedProducts: OrderItem[]
 
+		let impuestoPorcentaje = 0;
+		let topeValor = 0;
+
+		if (product.familia && product.familia.cuenta_venta_retencion && product.familia.cuenta_venta_retencion.impuesto) {
+			impuestoPorcentaje = product.familia.cuenta_venta_retencion.impuesto.porcentaje;
+        	topeValor = product.familia.cuenta_venta_retencion.impuesto.base;
+			
+			if (impuestoPorcentaje > porcentajeRetencion) {
+				impuestoPorcentaje = impuestoPorcentaje;
+				topeValor = topeValor;
+				setPorcentajeRetencion(impuestoPorcentaje)
+				setTopeRetencion(topeValor)
+			} else {
+				impuestoPorcentaje = porcentajeRetencion;
+				topeValor = topeRetencion;
+			}
+
+		}
+
+		console.log('porcentajeRetencion: ',impuestoPorcentaje);
+		console.log('topeRetencion: ',topeValor);
 		if (existingProductIndex >= 0) {
+			
+
 			updatedProducts = [...currentOrder.productos]
 			const item = updatedProducts[existingProductIndex]
 			
-			item.cantidad += quantity
-			item.subtotal = item.costo * item.cantidad
-			item.iva_valor = item.subtotal * (item.iva_porcentaje / 100)
-			item.total = item.subtotal + item.iva_valor
+			const newQuantity = item.cantidad + quantity
+			const totals = calculateProductTotals(product, newQuantity)
+			console.log('totals if: ',totals);
+			item.cantidad = newQuantity
+			item.subtotal = totals.subtotal
+			item.iva_valor = totals.ivaValor
+			item.retencion_porcentaje = totals.retencionPorcentaje
+			item.retencion_valor = totals.retencionValor
+			item.total = totals.totalProducto
+			
 		} else {
-			const precio = Number.parseFloat(product.precio)
-			const iva_porcentaje = 19
-			const subtotal = precio * quantity
-			const iva_valor = subtotal * (iva_porcentaje / 100)
-			const total = subtotal + iva_valor
-
+			
+			const totals = calculateProductTotals(product, quantity)
+			
 			const orderItem: OrderItem = {
 				consecutivo: currentOrder.productos.length + 1,
 				id_producto: product.id,
 				nombre: `${product.codigo} - ${product.nombre}`,
 				cantidad: quantity,
-				costo: precio,
-				subtotal: subtotal,
+				costo: Number.parseFloat(product.precio),
+				subtotal: totals.subtotal,
 				descuento_porcentaje: 0,
-				descuento_valor: 0,
-				iva_porcentaje: iva_porcentaje,
-				iva_valor: iva_valor,
-				total: total,
+				descuento_valor: totals.descuentoValor,
+				iva_porcentaje: totals.ivaPorcentaje,
+				iva_valor: totals.ivaValor,
+				retencion_porcentaje: totals.retencionPorcentaje,
+				retencion_valor: totals.retencionValor,
+				total: totals.totalProducto,
 				concepto: "",
 			}
+			console.log('totals else: ',totals);
+			console.log('orderItem: ',orderItem);
 			updatedProducts = [...currentOrder.productos, orderItem]
 		}
 		
@@ -376,29 +599,125 @@ function POSContent() {
 		await updateOrderLocallyAndRemotely(updatedOrder)
 	}
 
+	const calculateProductTotals = (product: Product, quantity: number = 1) => {
+		console.log('calculateProductTotals - ivaIncluido: ',ivaIncluido);
+		// 1. Inicialización con valores por unidad
+		const precioUnitario = Number.parseFloat(product.precio);
+		let descuentoValor = 0; // Asumiendo 0 como en la función antigua
+		let ivaPorcentaje = 0;
+		let subtotalUnitario = precioUnitario; // Base para el subtotal ANTES de IVA (por unidad)
+		let ivaValorUnitario = 0;
+		let totalProductoUnitario = precioUnitario - descuentoValor; // Base para el total ANTES de IVA (por unidad)
+
+		// Variables locales para retención (para el cálculo de este producto)
+		let retencionPorcentaje = 0;
+		let retencionValorUnitario = 0;
+
+		// OBTENER IVA DEL PRODUCTO
+		if (product.familia?.cuenta_venta_iva?.impuesto) {
+			ivaPorcentaje = product.familia.cuenta_venta_iva.impuesto.porcentaje;
+		}
+
+		// OBTENER RETE-FUENTE DEL PRODUCTO (Solo cálculo local, NO Lógica Global)
+		if (product.familia?.cuenta_venta_retencion?.impuesto) {
+			// 🔥 SIMPLEMENTE ASIGNAMOS EL PORCENTAJE DEL PRODUCTO. 
+			// La lógica de "cuál es el máximo" debe ir en addProductToOrder.
+			retencionPorcentaje = product.familia.cuenta_venta_retencion.impuesto.porcentaje;
+		}
+
+		// CÁLCULO DE IVA POR UNIDAD (Lógica Exacta de la Función Antigua)
+		// ... (El resto de la lógica de IVA es correcta, la omito por brevedad)
+		if (ivaPorcentaje > 0) {
+			if (ivaIncluido) {
+				ivaValorUnitario = (precioUnitario - descuentoValor) - ((precioUnitario - descuentoValor) / (1 + (ivaPorcentaje / 100)));
+			} else {
+				ivaValorUnitario = (precioUnitario - descuentoValor) * (ivaPorcentaje / 100);
+			}
+		}
+
+		// AJUSTE DEL TOTAL Y SUBTOTAL POR UNIDAD (Lógica Exacta de la Función Antigua)
+		totalProductoUnitario = precioUnitario - descuentoValor;
+		
+		if (!ivaIncluido) {
+			totalProductoUnitario += ivaValorUnitario;
+		} else {
+			subtotalUnitario -= ivaValorUnitario;
+		}
+		
+		// CÁLCULO DE RETENCIÓN POR UNIDAD (Se calcula con el porcentaje del producto, NO el global)
+		if (retencionPorcentaje > 0) {
+			// La retención se calcula sobre el subtotal (precio - descuento), que se considera la base.
+			retencionValorUnitario = (precioUnitario - descuentoValor) * (retencionPorcentaje / 100);
+		}
+		
+		// 2. Aplicar la cantidad al final
+		const subtotal = subtotalUnitario * quantity;
+		const ivaValor = ivaValorUnitario * quantity;
+		const retencionValor = retencionValorUnitario * quantity;
+		const totalProducto = totalProductoUnitario * quantity;
+
+		return {
+			subtotal,
+			ivaValor,
+			retencionValor,
+			totalProducto,
+			ivaPorcentaje,
+			retencionPorcentaje,
+			descuentoValor
+		};
+	}
+
 	const updateProductQuantity = async (productId: number, newQuantity: number) => {
-		if (!currentOrder) return
+		if (!currentOrder) return;
 
 		if (newQuantity <= 0) {
-			removeProductFromOrder(productId)
-			return
+			removeProductFromOrder(productId);
+			return;
+		}
+
+		const productToUpdate = currentOrder.productos.find(item => item.id_producto === productId);
+		if (!productToUpdate) return;
+
+		// 🔥 CALCULAR NUEVOS VALORES SEGÚN TU LÓGICA DE JAVASCRIPT
+		const totalPorCantidad = productToUpdate.costo * newQuantity;
+		let totalIva = 0;
+		let totalDescuento = 0;
+		let totalProducto = 0;
+
+		if (productToUpdate.descuento_porcentaje) {
+			totalDescuento = totalPorCantidad * (productToUpdate.descuento_porcentaje / 100);
+		}
+
+		totalProducto = totalPorCantidad - totalDescuento;
+
+		if (productToUpdate.iva_porcentaje) {
+			totalIva = (totalPorCantidad - totalDescuento) * (productToUpdate.iva_porcentaje / 100);
+			if (ivaIncluido) {
+				totalIva = (totalPorCantidad - totalDescuento) - ((totalPorCantidad - totalDescuento) / (1 + (productToUpdate.iva_porcentaje / 100)));
+			}
+		}
+
+		if (!ivaIncluido) {
+			totalProducto += totalIva;
 		}
 
 		const updatedProducts = currentOrder.productos.map((item) => {
 			if (item.id_producto === productId) {
-				const updatedItem = { ...item }
-				updatedItem.cantidad = newQuantity
-				updatedItem.subtotal = updatedItem.costo * newQuantity
-				updatedItem.iva_valor = updatedItem.subtotal * (updatedItem.iva_porcentaje / 100)
-				updatedItem.total = updatedItem.subtotal + updatedItem.iva_valor
-				return updatedItem
+				return {
+					...item,
+					cantidad: newQuantity,
+					subtotal: totalPorCantidad - totalDescuento,
+					descuento_valor: totalDescuento,
+					iva_valor: totalIva,
+					total: totalProducto
+				};
 			}
-			return item
-		})
+			return item;
+		});
 
-		const updatedOrder = calculateOrderTotals({ ...currentOrder, productos: updatedProducts })
-		await updateOrderLocallyAndRemotely(updatedOrder)
-	}
+		const updatedOrder = calculateOrderTotals({ ...currentOrder, productos: updatedProducts });
+		await updateOrderLocallyAndRemotely(updatedOrder);
+	};
 
 	const removeProductFromOrder = async (productId: number) => {
 		if (!currentOrder) return
@@ -440,7 +759,6 @@ function POSContent() {
 			const remainingOrders = orders.filter(o => o.id !== orderId && o.estado === 'pendiente')
 			setCurrentOrder(remainingOrders.length > 0 ? remainingOrders[0] : null)
 		}
-		// Pendiente: Llamada DELETE al backend
 	}
 
 	const cancelCurrentOrder = () => {
@@ -458,20 +776,16 @@ function POSContent() {
 	const processPayment = async (paymentData: any) => {
 		if (currentOrder) {
 			try {
-				// 1. Guardar antes de facturar
-				const savedOrder = await saveOrderToBackend(currentOrder, selectedCliente, selectedBodega)
+
+				const savedOrder = await saveSaleToBackend(currentOrder, paymentData)
+				console.log('savedOrder: ',savedOrder);
+				// const completedOrder = { ...savedOrder, estado: "completado" as const }
+				// setOrders((prev) => prev.map((order) => (order.id === currentOrder.id ? completedOrder : order)))
 				
-				// 2. Proceso de facturación (aquí iría la llamada final al backend para facturar y cambiar estado)
-				
-				// 3. Actualizar estado local (simulado)
-				const completedOrder = { ...savedOrder, estado: "completado" as const }
-				setOrders((prev) => prev.map((order) => (order.id === currentOrder.id ? completedOrder : order)))
-				
-				// 4. Seleccionar el siguiente pedido
-				const remainingOrders = orders.filter(o => o.id !== currentOrder.id && o.estado === 'pendiente')
-				setCurrentOrder(remainingOrders.length > 0 ? remainingOrders[0] : null)
-				setSelectedCliente(null)
-				setShowPaymentModal(false)
+				// const remainingOrders = orders.filter(o => o.id !== currentOrder.id && o.estado === 'pendiente')
+				// setCurrentOrder(remainingOrders.length > 0 ? remainingOrders[0] : null)
+				// setSelectedCliente(null)
+				// setShowPaymentModal(false)
 			} catch (error) {
 				console.error('Error procesando pedido:', error)
 			}
@@ -495,22 +809,20 @@ function POSContent() {
 		)
 	}
 
-
-	// --- RENDERIZADO PRINCIPAL (ESTRUCTURA DE 3 COLUMNAS) ---
-
 	return (
 		<div className="min-h-screen bg-background">
 			<header className="border-b border-border bg-card">
 				<div className="flex items-center justify-between px-6 py-4">
-				{/* Lado izquierdo */}
 				<div className="flex items-center gap-4">
 					<h1 className="text-2xl font-bold text-foreground">Sistema POS</h1>
 					<div className="text-sm text-muted-foreground hidden sm:block">
 					{selectedLocation ? `Ubicación: ${selectedLocation.nombre}` : "Seleccionar ubicación"}
 					</div>
+					<div className="text-sm px-2 py-1 rounded bg-muted">
+						IVA: {ivaIncluido ? 'Incluido' : 'Excluido'}
+					</div>
 				</div>
 
-				{/* Lado derecho - Menú compacto */}
 				<div className="flex items-center gap-2">
 					<Button
 						variant="outline"
@@ -530,7 +842,6 @@ function POSContent() {
 						</Button>
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="end" className="w-56">
-						{/* ... Opciones de menú ... */}
 						<DropdownMenuLabel className="flex flex-col">
 						<div className="flex items-center gap-2">
 							<User className="h-4 w-4" />
@@ -568,7 +879,6 @@ function POSContent() {
 						<DropdownMenuSeparator />
 
 						<DropdownMenuItem 
-						// 🔥 CORRECCIÓN: Usar handleLogout
 						onClick={handleLogout}
 						className="text-destructive focus:text-destructive"
 						>
@@ -581,10 +891,7 @@ function POSContent() {
 				</div>
 			</header>
 
-			{/* CONTENIDO PRINCIPAL: ESTRUCTURA DE 3 COLUMNAS */}
 			<div className="flex h-[calc(100vh-65px)] overflow-hidden">
-				
-				{/* 1. PANEL LATERAL DE PEDIDOS (IZQUIERDA) */}
 				<OrdersManagerPanel
 					orders={orders}
 					currentOrder={currentOrder}
@@ -592,7 +899,6 @@ function POSContent() {
 					onNewOrder={() => createNewOrder(selectedLocation?.id, selectedLocation?.nombre)}
 				/>
 
-				{/* 2. CONTENIDO CENTRAL (PRODUCTOS) */}
 				<div className="flex-1 flex flex-col overflow-hidden">
 					<div className="p-4 border-b border-border flex-shrink-0">
 						<LocationSelector 
@@ -607,7 +913,6 @@ function POSContent() {
 					</div>
 				</div>
 
-				{/* 3. PANEL DE ORDEN ACTUAL (DERECHA - OrderPanel) */}
 				<div className="h-screen flex">
 					<OrderPanel
 						currentOrder={currentOrder}
@@ -625,8 +930,6 @@ function POSContent() {
 				</div>
 			</div>
 
-			{/* Modales */}
-			{/* Se mantiene OrdersTableView, aunque se ha eliminado OrdersManager */}
 			{showOrdersTable && (
 				<OrdersTableView
 					orders={orders}
@@ -637,7 +940,11 @@ function POSContent() {
 			)}
 
 			{showPaymentModal && currentOrder && (
-				<PaymentModal order={currentOrder} onPayment={processPayment} onClose={() => setShowPaymentModal(false)} />
+				<PaymentModal
+					order={currentOrder}
+					onPayment={processPayment}
+					onClose={() => setShowPaymentModal(false)}
+				/>
 			)}
 		</div>
 	)
