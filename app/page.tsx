@@ -7,7 +7,6 @@ import { LocationSelector } from "@/components/location-selector"
 import { Ubicacion } from '@/types/ubicacion';
 import { ProductGrid } from "@/components/product-grid"
 import { OrderPanel } from "@/components/order-panel"
-import { OrdersManager } from "@/components/orders-manager"
 import { PaymentModal } from "@/components/payment-modal"
 import { OrdersTableView } from "@/components/orders-table-view"
 import { Button } from "@/components/ui/button"
@@ -84,6 +83,7 @@ export interface Order {
     id_backend: number | null
     id_ubicacion: number | null
     id_bodega: number | null
+	id_venta: number | null
     ubicacion_nombre: string
     productos: OrderItem[]
     subtotal: number
@@ -143,6 +143,7 @@ export interface BackendPedido {
 	created_at: string
 	estado: number;
 	id_ubicacion: number | null
+	id_venta: number | null
 	cliente: { nombre_completo: string }
 	iva_desglose?: { [key: number]: number }
 	detalles: any[]
@@ -350,6 +351,7 @@ function POSContent() {
 			id_backend: backendOrder.id, 
 			id_ubicacion: backendOrder.id_ubicacion,
 			id_bodega: selectedBodega ? selectedBodega.id: null,
+			id_venta: backendOrder.id_venta,
 			ubicacion_nombre: backendOrder.cliente?.nombre_completo.trim() || "Pedido Mostrador", 
 			productos: frontendItems,
 			subtotal: Number.parseFloat(backendOrder.subtotal),
@@ -496,6 +498,7 @@ function POSContent() {
 			id: `order-${Date.now()}`,
 			id_backend: null,
 			id_bodega: selectedBodega ? selectedBodega.id : null,
+			id_venta: null,
 			id_ubicacion: locationId || null,
 			ubicacion_nombre: locationName || "Mostrador",
 			productos: [],
