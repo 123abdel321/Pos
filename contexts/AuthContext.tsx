@@ -51,6 +51,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 	}, []);
 
 	const checkToken = async () => {
+		console.log('checkToken');
 		if (validating) {
 			console.log('⏳ Validación en curso, skipping...');
 			return;
@@ -59,7 +60,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 		setValidating(true);
 		try {
 			const token = getToken();
-
+			
 			if (token) {
 				
 				// Asegurar que el token esté en localStorage para el interceptor

@@ -4,11 +4,16 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import apiClient from "@/app/api/apiClient"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [formData, setFormData] = useState({
+        email: '',
+        password: ''
+    });
     const { login, isAuthenticated, loading: authLoading } = useAuth();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -21,35 +26,61 @@ export default function LoginPage() {
         
         // Mostrar error si viene en los parámetros
         const errorParam = searchParams.get('error');
-        const tokenParam = searchParams.get('token');
         
-        if (errorParam === 'invalid_token' && tokenParam) {
-            setError('Token inválido o expirado. Por favor, solicite un nuevo enlace.');
-        } else if (errorParam === 'validation_error') {
+        if (errorParam === 'validation_error') {
             setError('Error de validación. Intente nuevamente.');
         }
     }, [isAuthenticated, authLoading, router, searchParams]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError('');
 
+        // Validación básica
+        if (!formData.email || !formData.password) {
+            setError('Por favor, complete todos los campos');
+            setLoading(false);
+            return;
+        }
+
         try {
-            const token = searchParams.get('token');
-            
-            if (token) {
-                const result = await login(token);
+            // Hacer la petición POST al endpoint de login
+            const response = await apiClient.post('/pos/login', {
+                email: formData.email,
+                password: formData.password
+            });
+
+            if (response.data.success) {
+                // Usar el token recibido para hacer login
+                const result = await login(response.data.access_token);
                 if (result.success) {
                     router.push('/');
                 } else {
                     setError(result.error || 'Error de autenticación');
                 }
             } else {
-                setError('No se encontró token en la URL');
+                setError(response.data.message || 'Error en el login');
             }
-        } catch (error) {
-            setError('Error inesperado. Intente nuevamente.');
+        } catch (error: any) {
+            // Manejar errores de la petición
+            if (error.response?.data?.message) {
+                setError(error.response.data.message);
+            } else if (error.response?.status === 401) {
+                setError('Credenciales incorrectas');
+            } else if (error.response?.status === 422) {
+                setError('Datos de entrada inválidos');
+            } else {
+                setError('Error de conexión. Intente nuevamente.');
+            }
         } finally {
             setLoading(false);
         }
@@ -57,12 +88,12 @@ export default function LoginPage() {
 
     if (authLoading) {
         return (
-        <div className="min-h-screen flex items-center justify-center bg-background">
-            <div className="text-center">
-                <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
-                <p className="mt-4 text-foreground">Verificando autenticación...</p>
+            <div className="min-h-screen flex items-center justify-center bg-background">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+                    <p className="mt-4 text-foreground">Verificando autenticación...</p>
+                </div>
             </div>
-        </div>
         );
     }
 
@@ -78,32 +109,46 @@ export default function LoginPage() {
                         />
                     </div>
                     <CardTitle className="text-2xl">Sistema POS</CardTitle>
-                    <CardDescription>Ingrese con su token de autenticación</CardDescription>
+                    <CardDescription>Ingrese sus credenciales</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-4">
                         {error && (
                             <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md">
                                 {error}
-                        </div>
+                            </div>
                         )}
                         
                         <div className="space-y-2">
                             <Input
-                                type="text"
-                                placeholder="Token de autenticación"
-                                value={searchParams.get('token') || ''}
-                                readOnly
-                                className="text-center font-mono text-sm"
+                                type="email"
+                                name="email"
+                                placeholder="Correo electrónico"
+                                value={formData.email}
+                                onChange={handleChange}
+                                disabled={loading}
+                                required
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Input
+                                type="password"
+                                name="password"
+                                placeholder="Contraseña"
+                                value={formData.password}
+                                onChange={handleChange}
+                                disabled={loading}
+                                required
                             />
                         </div>
 
                         <Button 
                             type="submit" 
                             className="w-full" 
-                            disabled={loading || !searchParams.get('token')}
+                            disabled={loading || !formData.email || !formData.password}
                         >
-                            {loading ? 'Validando token...' : 'Ingresar al Sistema'}
+                            {loading ? 'Iniciando sesión...' : 'Ingresar al Sistema'}
                         </Button>
                     </form>
                 </CardContent>
