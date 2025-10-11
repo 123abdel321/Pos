@@ -1,20 +1,16 @@
 #!/bin/bash
 
-echo "🚀 Iniciando despliegue de React/Next.js..."
+echo "🚀 Iniciando despliegue..."
 
-# Ir al directorio del proyecto
-cd /var/www/pos || exit
-
-echo "📥 Ejecutando git pull..."
 git pull
 
-echo "📦 Instalando dependencias (si es necesario)..."
+echo "📦 Instalando dependencias..."
 npm install --production
 
-echo "🏗️ Compilando el proyecto..."
+echo "🏗️ Generando build de producción..."
 npm run build
 
-echo "🔁 Reiniciando PM2..."
-pm2 restart pos
+echo "🔄 Reiniciando servidor con PM2..."
+pm2 restart pos || pm2 start npm --name "pos" -- start
 
-echo "✅ Despliegue completado con éxito."
+echo "✅ Despliegue completado."
