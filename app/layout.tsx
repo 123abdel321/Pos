@@ -19,23 +19,26 @@ export const metadata: Metadata = {
 
   // Título y descripción SEO optimizados
   title: {
-    default: "POS Portafolio ERP | Punto de Venta Inteligente para Colombia",
+    default: "POS Portafolio ERP | Facturación Electrónica DIAN + Control Inventario",
     template: "%s | Portafolio ERP POS",
   },
-  description: "Sistema POS integrado con Portafolio ERP. Control total de ventas, inventario en tiempo real, facturación electrónica DIAN y sincronización contable automática. Ideal para retail, restaurantes y comercios en Colombia.",
+  description: "💳 Sistema POS todo-en-uno: Facturación DIAN, inventario en tiempo real, múltiples formas de pago. ¡Prueba gratis! Optimizado para comercios colombianos.",
 
   // Keywords para SEO
   keywords: [
     "POS Colombia",
     "punto de venta",
-    "facturación electrónica",
+    "facturación electrónica DIAN",
     "sistema POS",
     "Portafolio ERP",
     "inventario en tiempo real",
     "contabilidad automática",
     "retail Colombia",
     "restaurantes POS",
-    "comercio electrónico"
+    "comercio electrónico",
+    "facturación electrónica",
+    "POS cloud Colombia",
+    "punto de venta integrado"
   ],
 
   // URL canónica y alternates
@@ -72,14 +75,14 @@ export const metadata: Metadata = {
     locale: 'es_CO',
     url: 'https://pos.portafolioerp.com',
     siteName: 'Portafolio ERP POS',
-    title: "POS Inteligente | Sistema de Punto de Venta Integrado - Portafolio ERP",
-    description: "Optimiza tu negocio con nuestro módulo POS totalmente integrado al ERP. Control de ventas, inventario, facturación electrónica DIAN y contabilidad en tiempo real.",
+    title: "🚀 POS Portafolio ERP | Facturación Electrónica DIAN + Control Inventario",
+    description: "💳 Sistema POS todo-en-uno: Facturación DIAN, inventario en tiempo real, múltiples formas de pago. ¡Prueba gratis! Optimizado para comercios colombianos.",
     images: [
       {
-        url: '/img/og-pos-image.jpg', // Recomiendo crear esta imagen
+        url: '/img/og-facebook-pos.jpg',
         width: 1200,
         height: 630,
-        alt: 'Portafolio ERP POS - Sistema de Punto de Venta Inteligente',
+        alt: 'POS Portafolio ERP - Sistema completo para tu negocio en Colombia',
         type: 'image/jpeg',
       },
       {
@@ -89,18 +92,19 @@ export const metadata: Metadata = {
         alt: 'Logo Portafolio ERP POS',
       }
     ],
-    emails: ['soporte@portafolioerp.com'], // Agrega email de contacto
-    phoneNumbers: ['+573001234567'], // Agrega teléfono
+    emails: ['soporte@portafolioerp.com'],
+    phoneNumbers: ['+573001234567'],
+    countryName: 'Colombia',
   },
 
   // Twitter Cards mejoradas
   twitter: {
     card: 'summary_large_image',
-    site: '@PortafolioERP', // Agrega tu usuario de Twitter
+    site: '@PortafolioERP',
     creator: '@PortafolioERP',
-    title: "POS Inteligente Integrado a ERP | Portafolio ERP",
-    description: "Sistema de punto de venta con facturación electrónica DIAN, control de inventario y sincronización contable automática.",
-    images: ['/img/og-pos-image.jpg'],
+    title: "🚀 POS Portafolio ERP | Facturación DIAN + Inventario",
+    description: "💳 Sistema POS todo-en-uno para Colombia. Facturación electrónica, control inventario, múltiples pagos. ¡Prueba gratis!",
+    images: ['/img/og-facebook-pos.jpg'],
   },
 
   // Favicon y branding
@@ -131,7 +135,7 @@ export const metadata: Metadata = {
   },
   
   // Metadatos para apps y manifest
-  manifest: '/manifest.json', // Si tienes PWA
+  manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -149,7 +153,7 @@ export const metadata: Metadata = {
 const structuredData = {
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
-  'name': 'Portafolio ERP POS',
+  'name': 'POS Portafolio ERP',
   'applicationCategory': 'BusinessApplication',
   'operatingSystem': 'Web, Windows, macOS, Linux, iOS, Android',
   'permissions': 'browser',
@@ -158,7 +162,9 @@ const structuredData = {
   'author': {
     '@type': 'Organization',
     'name': 'Portafolio ERP',
-    'url': 'https://portafolioerp.com'
+    'url': 'https://portafolioerp.com',
+    'logo': 'https://pos.portafolioerp.com/img/logo_contabilidad.png',
+    'description': 'Sistemas ERP para empresas colombianas'
   },
   'offers': {
     '@type': 'Offer',
@@ -179,23 +185,58 @@ const structuredData = {
     'Control de inventario en tiempo real',
     'Sincronización contable automática',
     'Múltiples formas de pago',
-    'Reportes y analytics',
-    'App móvil incluida'
+    'Reportes y analytics en tiempo real',
+    'App móvil incluida',
+    'Soporte técnico 24/7',
+    'Backup automático en la nube'
   ],
   'screenshot': [
     {
       '@type': 'ImageObject',
-      'url': '/img/screenshot-dashboard.jpg',
-      'caption': 'Dashboard principal del POS'
+      'url': 'https://pos.portafolioerp.com/img/screenshot-dashboard.jpg',
+      'caption': 'Dashboard principal del POS Portafolio ERP'
     },
     {
       '@type': 'ImageObject',
-      'url': '/img/screenshot-ventas.jpg',
-      'caption': 'Interfaz de ventas'
+      'url': 'https://pos.portafolioerp.com/img/screenshot-ventas.jpg',
+      'caption': 'Interfaz de ventas rápida y intuitiva'
     }
   ],
-  'releaseNotes': 'Última actualización: Integración completa con facturación electrónica DIAN',
-  'softwareVersion': '2.0.0'
+  'releaseNotes': 'Última actualización: Integración completa con facturación electrónica DIAN y mejoras en rendimiento',
+  'softwareVersion': '2.0.0',
+  'countriesSupported': 'Colombia',
+  'processorRequirements': 'Navegador web moderno',
+  'memoryRequirements': '2GB RAM mínimo'
+};
+
+// Schema adicional para organización
+const organizationStructuredData = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  'name': 'Portafolio ERP',
+  'url': 'https://portafolioerp.com',
+  'logo': 'https://pos.portafolioerp.com/img/logo_contabilidad.png',
+  'description': 'Desarrolladores de sistemas ERP y POS para empresas colombianas',
+  'address': {
+    '@type': 'PostalAddress',
+    'streetAddress': 'Calle 123 #45-67',
+    'addressLocality': 'Bogotá',
+    'addressRegion': 'Bogotá D.C.',
+    'postalCode': '110111',
+    'addressCountry': 'CO'
+  },
+  'contactPoint': {
+    '@type': 'ContactPoint',
+    'telephone': '+57-300-123-4567',
+    'contactType': 'customer service',
+    'email': 'soporte@portafolioerp.com',
+    'availableLanguage': 'es'
+  },
+  'sameAs': [
+    'https://www.facebook.com/PortafolioERP',
+    'https://www.linkedin.com/company/portafolio-erp',
+    'https://twitter.com/PortafolioERP'
+  ]
 };
 
 // ----------------------------------------------------------------------
@@ -215,6 +256,10 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationStructuredData) }}
+        />
         
         {/* Metadatos adicionales para Colombia */}
         <meta name="geo.region" content="CO" />
@@ -223,16 +268,33 @@ export default function RootLayout({
         <meta name="ICBM" content="4.570868, -74.297333" />
         
         {/* Metadatos de negocio */}
-        <meta name="business:contact_data:street_address" content="Carrera 83 # 42 D - 27" />
-        <meta name="business:contact_data:locality" content="Medellín" />
-        <meta name="business:contact_data:region" content="Medellín." />
-        <meta name="business:contact_data:postal_code" content="050001" />
+        <meta name="business:contact_data:street_address" content="Calle 123 #45-67" />
+        <meta name="business:contact_data:locality" content="Bogotá" />
+        <meta name="business:contact_data:region" content="Bogotá D.C." />
+        <meta name="business:contact_data:postal_code" content="110111" />
         <meta name="business:contact_data:country_name" content="Colombia" />
+        
+        {/* Metadatos para WhatsApp */}
+        <meta property="og:url" content="https://pos.portafolioerp.com" />
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content="🚀 POS Portafolio ERP | Facturación Electrónica DIAN + Control Inventario" />
+        <meta property="og:description" content="💳 Sistema POS todo-en-uno: Facturación DIAN, inventario en tiempo real, múltiples formas de pago. ¡Prueba gratis!" />
+        <meta property="og:image" content="https://pos.portafolioerp.com/img/og-facebook-pos.jpg" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        
+        {/* Metadatos para LinkedIn */}
+        <meta property="linkedin:title" content="POS Portafolio ERP - Sistema de Punto de Venta para Colombia" />
+        <meta property="linkedin:description" content="Solución POS integrada con facturación electrónica DIAN y control de inventario en tiempo real" />
+        <meta property="linkedin:image" content="https://pos.portafolioerp.com/img/og-facebook-pos.jpg" />
       </head>
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         <Suspense fallback={
           <div className="min-h-screen flex items-center justify-center bg-background">
-            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-lg text-muted-foreground">Cargando POS Portafolio ERP...</p>
+            </div>
           </div>
         }>
           <ThemeProvider defaultTheme="dark" storageKey="pos-theme">
