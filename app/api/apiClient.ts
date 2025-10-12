@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const apiClient = axios.create({
-    baseURL: 'http://localhost:8000/api', // 🔥 Verifica que esta URL sea correcta
+    baseURL: 'https://app.portafolioerp.com/api', // 🔥 Verifica que esta URL sea correcta
     headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
