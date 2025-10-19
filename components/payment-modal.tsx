@@ -375,28 +375,31 @@ export function PaymentModal({ order, onPayment, onClose }: PaymentModalProps) {
             {/* Payment Method Selection Grid */}
             <Card className="p-6 shadow-md border border-border">
               <h3 className="font-bold text-lg mb-4 text-foreground border-b border-border pb-3">Método de Pago</h3>
-              <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
-                {loading ? (
-                    // PLACEHOLDERS DE LOS MÉTODOS DE PAGO
-                    [...Array(5)].map((_, i) => (
-                      <div 
-                        key={i} 
-                        className="h-20 border rounded-md bg-muted animate-pulse"
-                      ></div>
-                    ))
-                ) : (
-                    paymentMethods.map((method) => (
-                      <Button
-                        key={method.id}
-                        variant={selectedMethod?.id === method.id ? "default" : "outline"}
-                        onClick={() => setSelectedMethod(method)}
-                        className={`flex flex-col items-center justify-center gap-2 h-20 py-2 text-center text-xs font-bold transition-all ${selectedMethod?.id === method.id ? 'shadow-lg ring-2 ring-primary/50' : ''}`}
-                      >
-                        {getPaymentIcon(method.nombre)}
-                        <span className="text-xs">{method.text}</span>
-                      </Button>
-                    ))
-                )}
+                <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
+                  {loading ? (
+                      // PLACEHOLDERS DE LOS MÉTODOS DE PAGO
+                      [...Array(5)].map((_, i) => (
+                          <div 
+                              key={i} 
+                              className="h-20 border rounded-md bg-gray-100 dark:bg-gray-800 animate-pulse"
+                          ></div>
+                      ))
+                  ) : (
+                      paymentMethods.map((method) => (
+                          <Button
+                              key={method.id}
+                              variant={selectedMethod?.id === method.id ? "default" : "outline"}
+                              onClick={() => setSelectedMethod(method)}
+                              className={`flex flex-col items-center justify-center gap-1 h-20 px-1 py-2 text-center text-xs font-bold transition-all ${selectedMethod?.id === method.id ? 'shadow-lg ring-2 ring-primary/50' : 'hover:bg-gray-50/50'}`}
+                          >
+                              {getPaymentIcon(method.nombre)}
+
+                              <span className="text-xs w-full overflow-hidden leading-tight">
+                                  {method.text}
+                              </span>
+                          </Button>
+                      ))
+                  )}
               </div>
             </Card>
 

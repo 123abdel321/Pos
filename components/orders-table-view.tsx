@@ -68,7 +68,7 @@ interface PedidosResponse {
 interface OrdersTableViewProps {
   orders: Order[]
   onSelectOrder: (order: Order) => void
-  onDeleteOrder: (orderId: string) => void
+  onDeleteOrder: (orderId: number) => void
   onClose: () => void
 }
 
@@ -99,6 +99,8 @@ const mapPedidoToOrder = (pedido: Pedido): Order => {
     id_ubicacion: pedido.id_ubicacion,
     id_bodega: pedido.id_bodega,
     id_venta: pedido.id_venta,
+    id_cliente: pedido.id_cliente,
+    cliente: pedido.cliente,
     ubicacion_nombre: pedido.cliente?.nombre_completo || "Pedido Mostrador",
     productos,
     subtotal: Number.parseFloat(pedido.subtotal),
@@ -284,7 +286,7 @@ export function OrdersTableView({ orders, onSelectOrder, onDeleteOrder, onClose 
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => order.id_backend ? onDeleteOrder(order.id) : onDeleteOrder(order.id)}
+            onClick={() => order.id_backend ? onDeleteOrder(order.id_backend) : null}
             title="Eliminar Pedido"
             className="text-destructive hover:bg-destructive/10"
           >
@@ -348,7 +350,7 @@ export function OrdersTableView({ orders, onSelectOrder, onDeleteOrder, onClose 
           <Button
             variant="destructive"
             size="sm"
-            onClick={() => order.id_backend ? onDeleteOrder(order.id) : onDeleteOrder(order.id)}
+            onClick={() => order.id_backend ? onDeleteOrder(order.id_backend) : null}
             className="gap-1"
           >
             <Trash2 className="h-4 w-4" />

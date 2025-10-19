@@ -3,6 +3,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
+import { useConfirmation } from "@/components/ConfirmationContext";
 import { LocationSelector } from "@/components/location-selector"
 import { Ubicacion } from '@/types/ubicacion';
 import { ProductGrid } from "@/components/product-grid"
@@ -158,20 +159,21 @@ interface ValidationConfig {
 }
 
 function POSContent() {
-	const [selectedLocation, setSelectedLocation] = useState<Ubicacion | null>(null);
-	const [currentOrder, setCurrentOrder] = useState<Order | null>(null)
+	const { theme, setTheme } = useTheme()
+	const confirmDialog = useConfirmation()
 	const [orders, setOrders] = useState<Order[]>([])
+	const { user, logout, isAuthenticated, loading } = useAuth()
 	const [showOrdersTable, setShowOrdersTable] = useState(false)
 	const [showPaymentModal, setShowPaymentModal] = useState(false) 
-	const { theme, setTheme } = useTheme()
-	const { user, logout, isAuthenticated, loading } = useAuth()
-	const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null)
+	const [currentOrder, setCurrentOrder] = useState<Order | null>(null)
 	const [selectedBodega, setSelectedBodega] = useState<Bodega | null>(null)
+	const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null)
+	const [selectedLocation, setSelectedLocation] = useState<Ubicacion | null>(null);
 
 	// 🔥 NUEVOS ESTADOS PARA LA CONFIGURACIÓN
+	const [topeRetencion, setTopeRetencion] = useState<number>(0)
 	const [ivaIncluido, setIvaIncluido] = useState<boolean>(false)
 	const [porcentajeRetencion, setPorcentajeRetencion] = useState<number>(0)
-	const [topeRetencion, setTopeRetencion] = useState<number>(0)
 	const [validationConfig, setValidationConfig] = useState<ValidationConfig | null>(null)
 
 	// 🔥 CARGAR CONFIGURACIÓN AL INICIAR
@@ -793,17 +795,44 @@ function POSContent() {
 		}
 	}
 	
-	const deleteOrder = (orderId: string) => {
-		setOrders((prev) => prev.filter((order) => order.id !== orderId))
-		if (currentOrder?.id === orderId) {
-			const remainingOrders = orders.filter(o => o.id !== orderId && o.estado === 'pendiente')
-			setCurrentOrder(remainingOrders.length > 0 ? remainingOrders[0] : null)
+	const deleteOrder = async(orderId: number) => {
+		
+		const payload = {
+			id: orderId
 		}
+
+		const response = await apiClient.delete('/pos/pedidos', {
+			data: payload
+		});
+
+		if (response.data.success) {
+			setOrders((prev) => prev.filter((order) => order.id_backend !== orderId))
+			if (currentOrder?.id_backend === orderId) {
+				const remainingOrders = orders.filter(o => o.id_backend !== orderId && o.estado === 'pendiente')
+				setCurrentOrder(remainingOrders.length > 0 ? remainingOrders[0] : null)
+			}
+		}
+		console.log('response: ',response);
+
 	}
 
-	const cancelCurrentOrder = () => {
-		if (currentOrder) {
-			deleteOrder(currentOrder.id)
+	const cancelCurrentOrder = async () => {
+		if (!currentOrder) return;
+
+		const isConfirmed = await confirmDialog.confirm({
+			title: "Eliminar Pedido Activo",
+			message: `¿Realmente deseas eliminar el pedido activo "${currentOrder.id}"? Esta acción no se puede deshacer.`,
+			confirmText: "Sí, Eliminar Permanentemente",
+			cancelText: "Cancelar",
+			confirmButtonVariant: 'destructive'
+		});
+		
+
+		if (isConfirmed) {
+			if (currentOrder.id_backend !== null) {
+				deleteOrder(currentOrder.id_backend);
+			}
+			// useToast().show({ message: `Pedido ${currentOrder.id} eliminado.`, type: 'success' }); // Opcional
 		}
 	}
 
