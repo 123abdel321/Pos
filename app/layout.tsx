@@ -1,3 +1,4 @@
+import { ConfirmationProvider } from "@/components/ConfirmationContext";
 import TokenValidator from "@/components/sistem/TokenValidator";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ToastProvider } from "@/components/ToastProvider";
@@ -300,9 +301,11 @@ export default function RootLayout({
           <ThemeProvider defaultTheme="dark" storageKey="pos-theme">
             <AuthProvider>
               <TokenValidator />
-              <ToastProvider>
-                {children}
-              </ToastProvider>
+              <ConfirmationProvider>
+                <ToastProvider>
+                  {children}
+                </ToastProvider>
+              </ConfirmationProvider>
             </AuthProvider>
           </ThemeProvider>
         </Suspense>
