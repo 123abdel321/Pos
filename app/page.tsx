@@ -85,6 +85,7 @@ export interface Order {
     id_bodega: number | null
 	id_venta: number | null
 	id_cliente: number | null
+	cliente: any
     ubicacion_nombre: string
     productos: OrderItem[]
     subtotal: number
@@ -146,7 +147,7 @@ export interface BackendPedido {
 	id_ubicacion: number | null
 	id_venta: number | null
 	id_cliente: number | null
-	cliente: { nombre_completo: string }
+	cliente: any
 	iva_desglose?: { [key: number]: number }
 	detalles: any[]
 }
@@ -166,7 +167,7 @@ function POSContent() {
 	const { user, logout, isAuthenticated, loading } = useAuth()
 	const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null)
 	const [selectedBodega, setSelectedBodega] = useState<Bodega | null>(null)
-	
+
 	// 🔥 NUEVOS ESTADOS PARA LA CONFIGURACIÓN
 	const [ivaIncluido, setIvaIncluido] = useState<boolean>(false)
 	const [porcentajeRetencion, setPorcentajeRetencion] = useState<number>(0)
@@ -343,6 +344,7 @@ function POSContent() {
 			id_bodega: selectedBodega ? selectedBodega.id: null,
 			id_venta: backendOrder.id_venta,
 			id_cliente: backendOrder.id_cliente,
+			cliente: backendOrder.cliente,
 			ubicacion_nombre: backendOrder.cliente?.nombre_completo.trim() || "Pedido Mostrador", 
 			productos: frontendItems,
 			subtotal: Number.parseFloat(backendOrder.subtotal),
@@ -455,7 +457,8 @@ function POSContent() {
 	useEffect(() => {
 		const loadOrders = async () => {
 			try {
-				const response = await apiClient.get('/pos/pedidos'); 
+				const response = await apiClient.get('/pos/pedidos');
+
 				const backendOrders: BackendPedido[] = response.data.data || [];
 				const detailsOrder = response.data.data.length ? response.data.data[0].detalles : []
 
@@ -481,6 +484,28 @@ function POSContent() {
 	// --- FUNCIONES DE MANEJO DE ORDENES ---
 
 	const selectOrder = (order: Order) => {
+		
+		let orderCliente = order.cliente;
+		let dataCliente = {
+			id: orderCliente.id,
+			id_tipo_documento: orderCliente.id_tipo_documento,
+			id_ciudad: orderCliente.id_ciudad,
+			primer_nombre: orderCliente.primer_nombre,
+			segundo_nombre: orderCliente.segundo_nombre,
+			primer_apellido: orderCliente.primer_apellido,
+			segundo_apellido: orderCliente.segundo_apellido,
+			email: orderCliente.email,
+			sumar_aiu: orderCliente.sumar_aiu,
+			porcentaje_aiu: orderCliente.porcentaje_aiu,
+			porcentaje_reteica: orderCliente.porcentaje_reteica,
+			apartamentos: orderCliente.apartamentos,
+			id_responsabilidades: orderCliente.id_responsabilidades,
+			telefono: orderCliente.telefono,
+			text: orderCliente.text,
+			nombre_completo: orderCliente.nombre_completo
+		}
+
+		setSelectedCliente(dataCliente)
 		setCurrentOrder(order)
 	}
 
@@ -492,6 +517,9 @@ function POSContent() {
 			id_venta: null,
 			id_cliente: null,
 			id_ubicacion: locationId || null,
+			cliente: {
+				nombre_completo: ''
+			},
 			ubicacion_nombre: locationName || "Mostrador",
 			productos: [],
 			subtotal: 0,
@@ -738,8 +766,6 @@ function POSContent() {
 	}
 
 	const handleUpdateCliente = async (cliente: Cliente | null) => {
-		console.log('cliente: ',cliente);
-		console.log('currentOrder: ',currentOrder);
 
 		setSelectedCliente(cliente)
 		if (currentOrder) {
@@ -750,6 +776,7 @@ function POSContent() {
 				id_bodega: currentOrder.id_bodega,
 				id_venta: currentOrder.id_venta,
 				id_cliente: cliente?.id ?? null,
+				cliente: cliente,
 				ubicacion_nombre: currentOrder.ubicacion_nombre,
 				productos: currentOrder.productos,
 				subtotal: currentOrder.subtotal,
