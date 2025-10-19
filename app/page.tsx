@@ -84,6 +84,7 @@ export interface Order {
     id_ubicacion: number | null
     id_bodega: number | null
 	id_venta: number | null
+	id_cliente: number | null
     ubicacion_nombre: string
     productos: OrderItem[]
     subtotal: number
@@ -144,6 +145,7 @@ export interface BackendPedido {
 	estado: number;
 	id_ubicacion: number | null
 	id_venta: number | null
+	id_cliente: number | null
 	cliente: { nombre_completo: string }
 	iva_desglose?: { [key: number]: number }
 	detalles: any[]
@@ -196,7 +198,6 @@ function POSContent() {
 	};
 	
 	const calculateOrderTotals = (order: Order): Order => {
-		console.log('calculateOrderTotals: ',order)
 		let iva = 0;
 		let retencion = 0;
 		let descuento = 0;
@@ -210,9 +211,7 @@ function POSContent() {
 			descuento += producto.descuento_valor;
 			valorBruto += (producto.cantidad * producto.costo) - producto.descuento_valor;
 		});
-		console.log('iva: ',iva);
-		console.log('descuento: ',descuento);
-		console.log('valorBruto: ',valorBruto);
+
 		// Ajustar valorBruto si el IVA está incluido (IGUAL A TU JAVASCRIPT)
 		if (ivaIncluido) valorBruto -= iva;
 
@@ -253,6 +252,7 @@ function POSContent() {
 
 	// Función de mapeo envuelta en useCallback
 	const mapBackendOrderToFrontend = useCallback((backendOrder: BackendPedido): Order => {
+
 		const frontendItems: OrderItem[] = (backendOrder.detalles || []).map((detalle: any, index: number): OrderItem => {
 			const subtotalNum = Number.parseFloat(detalle.subtotal || '0');
 			const ivaValorNum = Number.parseFloat(detalle.iva_valor || '0');
@@ -291,9 +291,6 @@ function POSContent() {
 			let impuestoPorcentaje = 0;
             let topeValor = 0;
 
-			console.log('producto: ',producto);
-			console.log('producto: ',producto.cuenta_retencion);
-
 			if (producto.cuenta_retencion && producto.cuenta_retencion.impuesto) {
             	impuestoPorcentaje = parseFloat(producto.cuenta_retencion.impuesto.porcentaje);
             	topeValor = parseFloat(producto.cuenta_retencion.impuesto.base);
@@ -322,13 +319,6 @@ function POSContent() {
 			totalCalculo = totalCalculo + ivaCalculo;
 		}
 
-		console.log('ivaCalculo: ',ivaCalculo);
-		console.log('retencionCalculo: ',retencionCalculo);
-		console.log('descuentoCalculo: ',descuentoCalculo);
-		console.log('totalCalculo: ',totalCalculo);
-		console.log('redondeoCalculo: ',redondeoCalculo);
-		console.log('valorBrutoCalculo: ',valorBrutoCalculo);
-
 		const totalIva = frontendItems.reduce((sum, item) => sum + item.iva_valor, 0);
 		// 🔥 CALCULAR IVA AGRUPADO POR TASA
 		const ivaPorTasas = backendOrder.detalles.reduce((acc, item) => {
@@ -352,6 +342,7 @@ function POSContent() {
 			id_ubicacion: backendOrder.id_ubicacion,
 			id_bodega: selectedBodega ? selectedBodega.id: null,
 			id_venta: backendOrder.id_venta,
+			id_cliente: backendOrder.id_cliente,
 			ubicacion_nombre: backendOrder.cliente?.nombre_completo.trim() || "Pedido Mostrador", 
 			productos: frontendItems,
 			subtotal: Number.parseFloat(backendOrder.subtotal),
@@ -368,8 +359,9 @@ function POSContent() {
 	// Función para guardar en el backend
 	const saveOrderToBackend = async (order: Order, cliente: Cliente | null, bodega: Bodega | null): Promise<Order> => {
 		try {
-			const clienteId = cliente?.id?.toString() || "1"
-			const bodegaId = bodega?.id?.toString() || "1"
+			console.log('cliente: ',cliente);
+			const clienteId = cliente?.id?.toString() || null
+			const bodegaId = bodega?.id?.toString() || null
 			console.log('order: ',order);
 
 			const payload = {
@@ -428,12 +420,12 @@ function POSContent() {
 	}
 	
 	// 🔥 FUNCIÓN CENTRAL DE ACTUALIZACIÓN
-	const updateOrderLocallyAndRemotely = useCallback(async (updatedOrder: Order) => {
+	const updateOrderLocallyAndRemotely = useCallback(async (updatedOrder: Order, currentCliente: Cliente | null) => {
         setCurrentOrder(updatedOrder);
         setOrders(prev => prev.map(o => (o.id === updatedOrder.id ? updatedOrder : o)));
-
+		
         try {
-            const savedOrder = await saveOrderToBackend(updatedOrder, selectedCliente, selectedBodega);
+            const savedOrder = await saveOrderToBackend(updatedOrder, currentCliente, selectedBodega);
             if (savedOrder.id_backend && (!updatedOrder.id_backend || savedOrder.id_backend !== updatedOrder.id_backend)) {
                 setCurrentOrder(savedOrder);
                 setOrders(prev => prev.map(o => (o.id === savedOrder.id ? savedOrder : o)));
@@ -441,7 +433,7 @@ function POSContent() {
         } catch (error) {
             console.error("Error actualizando pedido en backend:", error);
         }
-    }, [selectedCliente, selectedBodega]);
+    }, [selectedBodega]);
 
 	// --- LOGICA DE CARGA INICIAL Y CLIENTE ---
 	
@@ -466,12 +458,11 @@ function POSContent() {
 				const response = await apiClient.get('/pos/pedidos'); 
 				const backendOrders: BackendPedido[] = response.data.data || [];
 				const detailsOrder = response.data.data.length ? response.data.data[0].detalles : []
-				console.log('detailsOrder ??: ',detailsOrder);
+
 				const newOrders = backendOrders
 					.filter(o => o.estado === 1) 
 					.map(mapBackendOrderToFrontend);
 
-				console.log('newOrders: ',newOrders);
 				setOrders(newOrders);
 
 				if (!currentOrder && newOrders.length > 0) {
@@ -499,6 +490,7 @@ function POSContent() {
 			id_backend: null,
 			id_bodega: selectedBodega ? selectedBodega.id : null,
 			id_venta: null,
+			id_cliente: null,
 			id_ubicacion: locationId || null,
 			ubicacion_nombre: locationName || "Mostrador",
 			productos: [],
@@ -555,17 +547,14 @@ function POSContent() {
 
 		}
 
-		console.log('porcentajeRetencion: ',impuestoPorcentaje);
-		console.log('topeRetencion: ',topeValor);
 		if (existingProductIndex >= 0) {
 			
-
 			updatedProducts = [...currentOrder.productos]
 			const item = updatedProducts[existingProductIndex]
 			
 			const newQuantity = item.cantidad + quantity
 			const totals = calculateProductTotals(product, newQuantity)
-			console.log('totals if: ',totals);
+			
 			item.cantidad = newQuantity
 			item.subtotal = totals.subtotal
 			item.iva_valor = totals.ivaValor
@@ -593,17 +582,16 @@ function POSContent() {
 				total: totals.totalProducto,
 				concepto: "",
 			}
-			console.log('totals else: ',totals);
-			console.log('orderItem: ',orderItem);
+
 			updatedProducts = [...currentOrder.productos, orderItem]
 		}
 		
 		const updatedOrder = calculateOrderTotals({ ...currentOrder, productos: updatedProducts })
-		await updateOrderLocallyAndRemotely(updatedOrder)
+		await updateOrderLocallyAndRemotely(updatedOrder, selectedCliente)
 	}
 
 	const calculateProductTotals = (product: Product, quantity: number = 1) => {
-		console.log('calculateProductTotals - ivaIncluido: ',ivaIncluido);
+
 		// 1. Inicialización con valores por unidad
 		const precioUnitario = Number.parseFloat(product.precio);
 		let descuentoValor = 0; // Asumiendo 0 como en la función antigua
@@ -719,7 +707,7 @@ function POSContent() {
 		});
 
 		const updatedOrder = calculateOrderTotals({ ...currentOrder, productos: updatedProducts });
-		await updateOrderLocallyAndRemotely(updatedOrder);
+		await updateOrderLocallyAndRemotely(updatedOrder, selectedCliente);
 	};
 
 	const removeProductFromOrder = async (productId: number) => {
@@ -728,7 +716,7 @@ function POSContent() {
 		const updatedProducts = currentOrder.productos.filter((item) => item.id_producto !== productId)
 		
 		const updatedOrder = calculateOrderTotals({ ...currentOrder, productos: updatedProducts })
-		await updateOrderLocallyAndRemotely(updatedOrder)
+		await updateOrderLocallyAndRemotely(updatedOrder, selectedCliente)
 	}
 
 	const updateProductInOrder = async (updatedProduct: OrderItem) => {
@@ -739,20 +727,42 @@ function POSContent() {
 		)
 
 		const updatedOrder = calculateOrderTotals({ ...currentOrder, productos: updatedProducts })
-		await updateOrderLocallyAndRemotely(updatedOrder)
+		await updateOrderLocallyAndRemotely(updatedOrder, selectedCliente)
 	}
 	
 	const handleUpdateBodega = async (bodega: Bodega | null) => {
 		setSelectedBodega(bodega)
 		if (currentOrder) {
-			await updateOrderLocallyAndRemotely(currentOrder) 
+			await updateOrderLocallyAndRemotely(currentOrder, selectedCliente) 
 		}
 	}
 
 	const handleUpdateCliente = async (cliente: Cliente | null) => {
+		console.log('cliente: ',cliente);
+		console.log('currentOrder: ',currentOrder);
+
 		setSelectedCliente(cliente)
 		if (currentOrder) {
-			await updateOrderLocallyAndRemotely(currentOrder)
+			let dataCurrentOrder = {
+				id: currentOrder.id,
+				id_backend: currentOrder.id_backend,
+				id_ubicacion: currentOrder.id_ubicacion,
+				id_bodega: currentOrder.id_bodega,
+				id_venta: currentOrder.id_venta,
+				id_cliente: cliente?.id ?? null,
+				ubicacion_nombre: currentOrder.ubicacion_nombre,
+				productos: currentOrder.productos,
+				subtotal: currentOrder.subtotal,
+				iva: currentOrder.iva,
+				retencion: currentOrder.retencion,
+				porcentaje_retencion: currentOrder.porcentaje_retencion,
+				total: currentOrder.total,
+				fecha: currentOrder.fecha,
+				estado: currentOrder.estado,
+				iva_desglose: currentOrder.iva_desglose
+			}
+
+			await updateOrderLocallyAndRemotely(dataCurrentOrder, cliente)
 		}
 	}
 	
@@ -781,7 +791,6 @@ function POSContent() {
 			try {
 
 				const savedOrder = await saveSaleToBackend(currentOrder, paymentData)
-				console.log('savedOrder: ',savedOrder);
 				// const completedOrder = { ...savedOrder, estado: "completado" as const }
 				// setOrders((prev) => prev.map((order) => (order.id === currentOrder.id ? completedOrder : order)))
 				

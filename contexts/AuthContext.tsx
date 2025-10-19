@@ -51,9 +51,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 	}, []);
 
 	const checkToken = async () => {
-		console.log('checkToken');
 		if (validating) {
-			console.log('⏳ Validación en curso, skipping...');
 			return;
 		}
 		

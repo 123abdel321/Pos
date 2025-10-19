@@ -296,7 +296,7 @@ export function OrderPanel({
                                     ) : (
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="outline" className="w-full justify-between h-7 px-2 text-[11px]">
+                                                <Button variant="outline" className="w-full justify-between h-7 px-2 text-[11px]" id="cliente-selector">
                                                     <div className="flex items-center gap-1">
                                                         <Warehouse className="h-3 w-3" />
                                                         <span>Bodega</span>
@@ -346,7 +346,7 @@ export function OrderPanel({
 
                                 {/* Cliente */}
                                 <div className="space-y-1">
-                                    <label className="text-[11px] font-medium">Cliente</label>
+                                    <label htmlFor="cliente-selector" className="text-[11px] font-medium">Cliente</label>
                                     {selectedCliente ? (
                                         <div className="flex items-center justify-between p-1 border rounded bg-muted/30">
                                             <div className="flex items-center gap-1">
@@ -370,10 +370,10 @@ export function OrderPanel({
                                     ) : (
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="outline" className="w-full justify-between h-7 px-2 text-[11px]">
+                                                <Button variant="outline" className="w-full justify-between h-7 px-2 text-[11px]" id="cliente-selector">
                                                     <div className="flex items-center gap-1">
                                                         <User className="h-3 w-3" />
-                                                        <span>Cliente</span>
+                                                        <span>Selecionar cliente</span>
                                                     </div>
                                                     <ChevronDown className="h-3 w-3" />
                                                 </Button>
