@@ -586,16 +586,27 @@ function POSContent() {
 
 	const createNewOrder = async () => {
 
+		const clienteGuardado = localStorage.getItem('clientePorDefecto');
+		var clienteSeteado = null
+		if (clienteGuardado) {
+			clienteSeteado = JSON.parse(clienteGuardado);
+			try {
+				setSelectedCliente(clienteSeteado);
+			} catch (error) {
+				console.error('❌ Error cargando cliente desde localStorage:', error);
+			}
+		}
+
 		const newOrder: Order = {
 			id: `order-${Date.now()}`,
 			id_backend: null,
 			id_bodega: selectedBodega ? selectedBodega.id : null,
 			bodega: selectedBodega,
-			ubicacion: selectedCliente,
+			ubicacion: null,
 			id_venta: null,
-			id_cliente: selectedCliente ? selectedCliente.id : null,
-			id_ubicacion: selectedLocation ? selectedLocation.id : null,
-			cliente: selectedCliente,
+			id_cliente: clienteSeteado ? clienteSeteado.id : null,
+			id_ubicacion: null,
+			cliente: clienteSeteado,
 			ubicacion_nombre: "Mostrador",
 			productos: [],
 			subtotal: 0,
@@ -849,9 +860,8 @@ function POSContent() {
 	}
 
 	const handleUpdateCliente = async (cliente: Cliente | null) => {
-
 		setSelectedCliente(cliente)
-		if (currentOrder) {
+		if (currentOrder && cliente) {
 			await updateOrderLocallyAndRemotely(currentOrder, cliente, selectedLocation, selectedBodega)
 		}
 	}
@@ -886,7 +896,6 @@ function POSContent() {
 			cancelText: "Cancelar",
 			confirmButtonVariant: 'destructive'
 		});
-		
 
 		if (isConfirmed) {
 			if (currentOrder.id_backend !== null) {
@@ -963,57 +972,52 @@ function POSContent() {
 					</Button>
 
 					<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<Button variant="outline" size="sm" className="gap-2">
-						<Menu className="h-4 w-4" />
-						<span className="hidden sm:inline">Menú</span>
-						</Button>
-					</DropdownMenuTrigger>
-					<DropdownMenuContent align="end" className="w-56">
-						<DropdownMenuLabel className="flex flex-col">
-						<div className="flex items-center gap-2">
-							<User className="h-4 w-4" />
-							<span>{user?.username || 'Usuario'}</span>
-						</div>
-						<span className="text-xs text-muted-foreground font-normal">
-							{user?.email || 'usuario@ejemplo.com'}
-						</span>
-						</DropdownMenuLabel>
-						
-						<DropdownMenuSeparator />
-						
-						<DropdownMenuItem 
-							onClick={() => setShowOrdersTable(true)} 
-						>
-							<Table className="h-4 w-4 mr-2" />
-							Gestión de Pedidos
-						</DropdownMenuItem>
+						<DropdownMenuTrigger asChild>
+							<Button variant="outline" size="sm" className="gap-2">
+							<Menu className="h-4 w-4" />
+							<span className="hidden sm:inline">Menú</span>
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end" className="w-56">
+							<DropdownMenuLabel className="flex flex-col">
+							<div className="flex items-center gap-2">
+								<User className="h-4 w-4" />
+								<span>{user?.username || 'Usuario'}</span>
+							</div>
+							<span className="text-xs text-muted-foreground font-normal">
+								{user?.email || 'usuario@ejemplo.com'}
+							</span>
+							</DropdownMenuLabel>
+							
+							<DropdownMenuSeparator />
+							
+							<DropdownMenuItem 
+								onClick={() => setShowOrdersTable(true)} 
+							>
+								<Table className="h-4 w-4 mr-2" />
+								Gestión de Pedidos
+								<span className="ml-auto text-xs bg-primary text-primary-foreground px-2 py-1 rounded-full">
+									{orders.filter((o) => o.estado === "pendiente").length}
+								</span>
+							</DropdownMenuItem>
 
-						<DropdownMenuItem>
-						<Users className="h-4 w-4 mr-2" />
-						Pedidos Activos
-						<span className="ml-auto text-xs bg-primary text-primary-foreground px-2 py-1 rounded-full">
-							{orders.filter((o) => o.estado === "pendiente").length}
-						</span>
-						</DropdownMenuItem>
+							<DropdownMenuSeparator />
+							
+							<DropdownMenuItem onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+								{theme === "dark" ? (<Sun className="h-4 w-4 mr-2" />) : (<Moon className="h-4 w-4 mr-2" />)}
+								{theme === "dark" ? "Modo Claro" : "Modo Oscuro"}
+							</DropdownMenuItem>
 
-						<DropdownMenuSeparator />
-						
-						<DropdownMenuItem onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
-						{theme === "dark" ? (<Sun className="h-4 w-4 mr-2" />) : (<Moon className="h-4 w-4 mr-2" />)}
-						{theme === "dark" ? "Modo Claro" : "Modo Oscuro"}
-						</DropdownMenuItem>
+							<DropdownMenuSeparator />
 
-						<DropdownMenuSeparator />
-
-						<DropdownMenuItem 
-						onClick={handleLogout}
-						className="text-destructive focus:text-destructive"
-						>
-						<LogOut className="h-4 w-4 mr-2" />
-						Cerrar Sesión
-						</DropdownMenuItem>
-					</DropdownMenuContent>
+							<DropdownMenuItem 
+								onClick={handleLogout}
+								className="text-destructive focus:text-destructive"
+								>
+								<LogOut className="h-4 w-4 mr-2" />
+								Cerrar Sesión
+							</DropdownMenuItem>
+						</DropdownMenuContent>
 					</DropdownMenu>
 				</div>
 				</div>
@@ -1062,7 +1066,7 @@ function POSContent() {
 				<OrdersTableView
 					orders={orders}
 					onSelectOrder={selectOrder}
-					onDeleteOrder={deleteOrder}
+					onDeleteOrder={cancelCurrentOrder}
 					onClose={() => setShowOrdersTable(false)}
 				/>
 			)}
