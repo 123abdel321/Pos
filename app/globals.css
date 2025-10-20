@@ -4,78 +4,84 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Light theme colors */
-  --background: #FFF;
-  --foreground: oklch(0.15 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.15 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.15 0 0);
-  --primary: #0d4598;
-  --primary-foreground: #FFF;
-  --secondary: oklch(0.95 0 0);
-  --secondary-foreground: oklch(0.15 0 0);
-  --muted: oklch(0.95 0 0);
-  --muted-foreground: oklch(0.45 0 0);
-  --accent: oklch(0.95 0 0);
-  --accent-foreground: oklch(0.15 0 0);
-  --destructive: oklch(0.62 0.25 29);
-  --destructive-foreground: #FFF;
-  --border: oklch(0.9 0 0);
-  --input: oklch(0.95 0 0);
+  /* Light theme colors - MEJORADO */
+  --background: #f8fafc;          /* Fondo ligeramente gris en lugar de blanco puro */
+  --foreground: #1e293b;          /* Texto más oscuro para mejor contraste */
+  
+  --card: #ffffff;                /* Blanco para tarjetas sobre fondo gris */
+  --card-foreground: #1e293b;
+  
+  --popover: #ffffff;
+  --popover-foreground: #1e293b;
+  
+  --primary: #0d4598;             /* Mantenemos tu azul principal */
+  --primary-foreground: #ffffff;
+  
+  --secondary: #f1f5f9;           /* Gris más claro para elementos secundarios */
+  --secondary-foreground: #475569;
+  
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;    /* Texto muted más visible */
+  
+  --accent: #e2e8f0;              /* Acento con mejor contraste */
+  --accent-foreground: #1e293b;
+  
+  --destructive: #dc2626;         /* Rojo más vibrante */
+  --destructive-foreground: #ffffff;
+  
+  --border: #cbd5e1;              /* Bordes más definidos */
+  --input: #ffffff;
   --ring: #0d4598;
-  --success: #3BCB72;
-  --success-foreground: #FFF;
-  --warning: oklch(0.75 0.15 85);
-  --warning-foreground: oklch(0.15 0 0);
-  --info: oklch(0.65 0.2 220);
-  --info-foreground: #FFF;
+  
+  --success: #16a34a;             /* Verde más vibrante */
+  --success-foreground: #ffffff;
+  
+  --warning: #d97706;             /* Naranja más definido */
+  --warning-foreground: #ffffff;
+  
+  --info: #0284c7;                /* Azul info más definido */
+  --info-foreground: #ffffff;
+  
   --chart-1: #0d4598;
-  --chart-2: oklch(0.65 0.2 220);
-  --chart-3: oklch(0.75 0.15 85);
-  --chart-4: oklch(0.62 0.25 29);
-  --chart-5: oklch(0.55 0.2 300);
+  --chart-2: #0284c7;
+  --chart-3: #d97706;
+  --chart-4: #dc2626;
+  --chart-5: #7c3aed;
+  
   --radius: 0.5rem;
-  --sidebar: oklch(1 0 0);
-  --sidebar-foreground: oklch(0.15 0 0);
+  
+  /* Sidebar mejorado */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1e293b;
   --sidebar-primary: #0d4598;
-  --sidebar-primary-foreground: #FFF;
-  --sidebar-accent: oklch(0.95 0 0);
-  --sidebar-accent-foreground: oklch(0.15 0 0);
-  --sidebar-border: oklch(0.9 0 0);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f1f5f9;
+  --sidebar-accent-foreground: #475569;
+  --sidebar-border: #e2e8f0;
   --sidebar-ring: #0d4598;
 }
 
 .dark {
-  --background: #0f172a;          /* gris azulado profundo */
-  --foreground: #f1f5f9;          /* texto casi blanco */
-
-  --card: #1e293b;                /* gris intermedio (tarjetas, paneles) */
+  /* (Tu dark theme se mantiene igual) */
+  --background: #0f172a;
+  --foreground: #f1f5f9;
+  --card: #1e293b;
   --card-foreground: #f8fafc;
-
   --popover: #1e293b;
   --popover-foreground: #f8fafc;
-
-  --primary: #3b82f6;             /* azul vibrante */
+  --primary: #3b82f6;
   --primary-foreground: #ffffff;
-
-  --secondary: #334155;           /* gris azulado más claro */
+  --secondary: #334155;
   --secondary-foreground: #e2e8f0;
-
-  --muted: #1e293b;               /* gris medio (inputs, fondo suave) */
-  --muted-foreground: #94a3b8;    /* texto gris claro */
-
-  --accent: #475569;              /* gris azulado con contraste */
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --accent: #475569;
   --accent-foreground: #f8fafc;
-
-  --destructive: #ef4444;         /* rojo */
+  --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-
-  --border: #334155;              /* bordes sutiles */
+  --border: #334155;
   --input: #334155;
-  --ring: #3b82f6;                /* azul vibrante */
-
-  /* Opcional: Sidebar */
+  --ring: #3b82f6;
   --sidebar: #1e293b;
   --sidebar-foreground: #f1f5f9;
   --sidebar-primary: #3b82f6;
@@ -86,8 +92,8 @@
   --sidebar-ring: #3b82f6;
 }
 
-
 @theme inline {
+  /* (Tu configuración @theme se mantiene igual) */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --color-background: var(--background);
