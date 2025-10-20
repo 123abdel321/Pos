@@ -14,7 +14,8 @@ import {
 	User, 
 	Clock,
 	ListOrdered,
-    Plus
+    Plus,
+	MapPin,
 } from "lucide-react"
 import type { Order } from "@/app/page"
 
@@ -86,44 +87,96 @@ export function OrdersManagerPanel({
 				key={order.id}
 				onClick={() => onSelectOrder(order)}
 				className={`
-					p-2 cursor-pointer transition-colors mb-2
-					${isCurrent ? "border-primary border-2 bg-primary/10" : "hover:bg-accent/50"}
+					p-3 cursor-pointer transition-all mb-2 
+					${isCurrent 
+						? "border-2 border-primary bg-primary/5 shadow-md" // Estilo más fuerte para la selección
+						: "hover:bg-accent/50 border border-transparent" // Border más sutil para el hover
+					}
 				`}
 			>
-				<div className="flex items-center justify-between">
+				{/* --- CABECERA: ID, TIEMPO y TOTAL --- */}
+				<div className="flex items-start justify-between">
+					
+					{/* IZQUIERDA: ID y FECHA */}
 					<div className="flex items-center gap-2">
-						<ListOrdered className={`h-4 w-4 ${isCurrent ? 'text-primary' : 'text-muted-foreground'}`} />
-						<div>
-							<div className="text-xs font-semibold leading-tight flex items-center gap-1">
-								{order.id_backend ? (
-									<Badge className="text-[10px] px-1 py-0 h-4 bg-yellow-400 text-black hover:bg-yellow-500">
-										PEDIDO #{order.id_backend}
-									</Badge>
-								) : (
-									<Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">
-										TEMP: {order.id.replace('order-', '').slice(-6)}
-									</Badge>
-								)}
-							</div>
-							<div className="text-[10px] text-muted-foreground mt-[2px] flex items-center gap-1">
+						
+						{/* Icono de Orden */}
+						<ListOrdered 
+							className={`h-4 w-4 ${isCurrent ? 'text-primary' : 'text-muted-foreground'}`} 
+						/>
+						
+						<div className="space-y-0.5">
+							
+							{/* ID de Pedido (Badge) */}
+							{order.id_backend ? (
+								<Badge 
+									className="text-[10px] px-1.5 py-0 h-4 bg-yellow-400 text-black hover:bg-yellow-500 font-bold"
+								>
+									PEDIDO #{order.id_backend}
+								</Badge>
+							) : (
+								<Badge 
+									variant="secondary" 
+									className="text-[10px] px-1.5 py-0 h-4 font-mono tracking-wider" // Fuente mono para ID temporal
+								>
+									TEMP: {order.id.replace('order-', '').slice(-6)}
+								</Badge>
+							)}
+							
+							{/* Fecha y Hora */}
+							<div className="text-[10px] text-muted-foreground flex items-center gap-1">
 								<Clock className="h-2.5 w-2.5" />
-								{formatDateTime(order.fecha)}
+								<span>{formatDateTime(order.fecha)}</span>
 							</div>
 						</div>
 					</div>
-					<div className="text-right">
-						<div className="text-sm font-bold leading-tight">
+					
+					{/* DERECHA: TOTAL y CANTIDAD DE ITEMS */}
+					<div className="text-right flex flex-col items-end">
+						<div className="text-sm font-extrabold leading-none text-foreground">
 							{formatPrice(order.total)}
 						</div>
-						<div className="text-[11px] text-muted-foreground leading-tight mt-[2px]">
+						<div className="text-[10px] text-muted-foreground leading-none mt-0.5">
 							{order.productos.length} items
 						</div>
 					</div>
 				</div>
-				<Separator className="my-1" />
-				<div className="flex items-center text-[10px] text-muted-foreground gap-1">
-					<User className="h-3 w-3" />
-					<span className="truncate">{order.ubicacion_nombre}</span>
+
+				{/* --- SEPARADOR (opcional, podrías quitarlo si quieres más compacto) --- */}
+				<Separator className="my-2" />
+
+				{/* --- PIE DE PÁGINA: CLIENTE y UBICACIÓN --- */}
+				<div className="space-y-1">
+					
+					{/* Cliente */}
+					{order.cliente && (
+						<div className="flex items-center text-[11px] text-foreground/80 gap-1">
+							<User className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
+							<span 
+								className="truncate font-medium" 
+								title={`${order.cliente.numero_documento} - ${order.cliente.nombre_completo}`}
+							>
+								{/* Muestra solo el nombre y documento es el identificador en el title */}
+								{order.cliente.nombre_completo} 
+							</span>
+							<span className="text-muted-foreground text-[10px] flex-shrink-0">
+								({order.cliente.numero_documento})
+							</span>
+						</div>
+					)}
+					
+					{/* Ubicación */}
+					{order.ubicacion && (
+						<div className="flex items-center text-[11px] text-foreground/80 gap-1">
+							<MapPin className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
+							<span 
+								className="truncate" 
+								title={`${order.ubicacion.codigo} - ${order.ubicacion.nombre}`}
+							>
+								{order.ubicacion.codigo} - {order.ubicacion.nombre}
+							</span>
+						</div>
+					)}
 				</div>
 			</Card>
 		)

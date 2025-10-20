@@ -22,7 +22,8 @@ import {
     ChevronRight, // Icono para expandir
     Warehouse,
     ListOrdered,
-    ChevronDown
+    ChevronDown,
+    Printer
 } from "lucide-react"
 import { ProductEditModal } from "./product-edit-modal"
 
@@ -127,6 +128,14 @@ export function OrderPanel({
         bodega.nombre.toLowerCase().includes(searchBodega.toLowerCase())
     );
 
+    const handlePrintOrder = (orderId: number | null) => {
+        // Reemplazar con su endpoint real de PDF
+        if (orderId) {
+            const pdfUrl = `http://localhost:8000/pedido-print/${orderId}`;
+            window.open(pdfUrl, '_blank');
+        }
+    };
+
     const handleSelectCliente = (cliente: Cliente) => {
         setSearchCliente("")
         if (onUpdateCliente) {
@@ -203,7 +212,11 @@ export function OrderPanel({
                              <div className="flex items-center gap-2">
                                 <ListOrdered className="h-4 w-4 text-primary" />
                                 <h2 className="text-sm font-semibold text-foreground truncate max-w-[150px]">
-                                    {currentOrder ? `Pedido: ${currentOrder.ubicacion_nombre}` : "Pedido Actual"}
+                                {currentOrder
+                                    ? currentOrder.ubicacion?.nombre ||
+                                    currentOrder.cliente?.nombre_completo ||
+                                    "Pedido Actual"
+                                    : "Pedido Actual"}
                                 </h2>
                                 {currentOrder?.id_backend && (
                                     <Badge variant="secondary" className="text-[15px] px-1 py-0 h-4">
@@ -544,7 +557,17 @@ export function OrderPanel({
                                     <CreditCard className="h-4 w-4" />
                                     Pagar ({formatPrice(currentOrder.total)})
                                 </Button>
+
                                 <div className="flex gap-2">
+                                    <Button
+                                        onClick={() => handlePrintOrder(currentOrder.id_backend)}
+                                        disabled={!currentOrder.id_backend}
+                                        variant="outline"
+                                        className="w-1/3 gap-1 h-8"
+                                        title="Imprimir pedido"
+                                    >
+                                        <Printer className="h-4 w-4" />
+                                    </Button>
                                     <Button
                                         variant="outline"
                                         onClick={onNewOrder}

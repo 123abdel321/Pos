@@ -13,17 +13,12 @@ import { OrdersTableView } from "@/components/orders-table-view"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "@/components/theme-provider"
 import { 
-	Users, 
-	Settings, 
 	Sun, 
 	Moon, 
 	Table, 
 	LogOut, 
 	Menu,
 	User,
-	Bell,
-	HelpCircle,
-	CreditCard
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import ProtectedRoute from "@/components/sistem/ProtectedRoute"
@@ -560,27 +555,73 @@ function POSContent() {
 
 	const selectOrder = (order: Order) => {
 		
-		let orderCliente = order.cliente;
-		let dataCliente = {
-			id: orderCliente.id,
-			id_tipo_documento: orderCliente.id_tipo_documento,
-			id_ciudad: orderCliente.id_ciudad,
-			primer_nombre: orderCliente.primer_nombre,
-			segundo_nombre: orderCliente.segundo_nombre,
-			primer_apellido: orderCliente.primer_apellido,
-			segundo_apellido: orderCliente.segundo_apellido,
-			email: orderCliente.email,
-			sumar_aiu: orderCliente.sumar_aiu,
-			porcentaje_aiu: orderCliente.porcentaje_aiu,
-			porcentaje_reteica: orderCliente.porcentaje_reteica,
-			apartamentos: orderCliente.apartamentos,
-			id_responsabilidades: orderCliente.id_responsabilidades,
-			telefono: orderCliente.telefono,
-			text: orderCliente.text,
-			nombre_completo: orderCliente.nombre_completo
+		const orderBodega = order.bodega;
+		const orderCliente = order.cliente;
+		const orderUbicacion = order.ubicacion;
+
+		if (orderBodega) {
+			const dataBodega = {
+				id: orderBodega ? orderBodega.id : null,
+				codigo: orderBodega ? orderBodega.codigo : null,
+				nombre: orderBodega ? orderBodega.nombre : null,
+				ubicacion: orderBodega ? orderBodega.ubicacion : null,
+				id_centro_costos: orderBodega ? orderBodega.id_centro_costos : null,
+				id_responsable: orderBodega ? orderBodega.id_responsable : null,
+				id_cuenta_cartera: orderBodega ? orderBodega.id_cuenta_cartera : null,
+				consecutivo: orderBodega ? orderBodega.consecutivo : null,
+				consecutivo_parqueadero: orderBodega ? orderBodega.consecutivo_parqueadero : null,
+				created_by: orderBodega ? orderBodega.created_by : null,
+				updated_by: orderBodega ? orderBodega.updated_by : null,
+				created_at: orderBodega ? orderBodega.created_at : null,
+				updated_at: orderBodega ? orderBodega.updated_at : null,
+				text: orderBodega ? orderBodega.codigo+' - '+orderBodega.nombre : null,
+			}
+			setSelectedBodega(dataBodega)
+		} else {
+			setSelectedBodega(null)
 		}
 
-		setSelectedCliente(dataCliente)
+		if (orderCliente) {
+			const dataCliente = {
+				id: orderCliente.id,
+				id_tipo_documento: orderCliente.id_tipo_documento,
+				id_ciudad: orderCliente.id_ciudad,
+				primer_nombre: orderCliente.primer_nombre,
+				segundo_nombre: orderCliente.segundo_nombre,
+				primer_apellido: orderCliente.primer_apellido,
+				segundo_apellido: orderCliente.segundo_apellido,
+				email: orderCliente.email,
+				sumar_aiu: orderCliente.sumar_aiu,
+				porcentaje_aiu: orderCliente.porcentaje_aiu,
+				porcentaje_reteica: orderCliente.porcentaje_reteica,
+				apartamentos: orderCliente.apartamentos,
+				id_responsabilidades: orderCliente.id_responsabilidades,
+				telefono: orderCliente.telefono,
+				text: orderCliente.text,
+				nombre_completo: orderCliente.nombre_completo
+			}
+			setSelectedCliente(dataCliente)
+		} else {
+			setSelectedCliente(null)
+		}
+
+		if (orderUbicacion) {
+			const pedidoUbi = orderUbicacion.pedido;
+			const dataUbicacion = {
+				id: orderUbicacion.id,
+				nombre: orderUbicacion.nombre,
+				text: orderUbicacion.nombre+' - '+orderUbicacion.codigo,
+				codigo: orderUbicacion.codigo,
+				pedido: {
+					id: pedidoUbi ? pedidoUbi.id : null,
+					id_venta: pedidoUbi ? pedidoUbi.id_venta : null
+				}
+			}
+			setSelectedLocation(dataUbicacion)
+		} else {
+			setSelectedLocation(null)
+		}
+		
 		setCurrentOrder(order)
 	}
 
@@ -597,16 +638,18 @@ function POSContent() {
 			}
 		}
 
+		setSelectedLocation(null);
+
 		const newOrder: Order = {
 			id: `order-${Date.now()}`,
 			id_backend: null,
+			id_venta: null,
 			id_bodega: selectedBodega ? selectedBodega.id : null,
 			bodega: selectedBodega,
-			ubicacion: null,
-			id_venta: null,
 			id_cliente: clienteSeteado ? clienteSeteado.id : null,
-			id_ubicacion: null,
 			cliente: clienteSeteado,
+			id_ubicacion: null,
+			ubicacion: null,
 			ubicacion_nombre: "Mostrador",
 			productos: [],
 			subtotal: 0,
@@ -622,7 +665,7 @@ function POSContent() {
 		setCurrentOrder(newOrder);
 		
 		try {
-			const savedOrder = await saveOrderToBackend(newOrder, selectedCliente, selectedLocation, selectedBodega)
+			const savedOrder = await saveOrderToBackend(newOrder, selectedCliente, null, selectedBodega)
 			
 			if (savedOrder?.id_backend) {
 				setCurrentOrder(savedOrder)
