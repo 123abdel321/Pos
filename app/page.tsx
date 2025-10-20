@@ -87,6 +87,8 @@ export interface Order {
 	id_venta: number | null
 	id_cliente: number | null
 	cliente: any
+	bodega: any
+	ubicacion: any
     ubicacion_nombre: string
     productos: OrderItem[]
     subtotal: number
@@ -131,8 +133,8 @@ export interface Bodega {
 	created_by: number | null
 	updated_by: number | null
 	created_at: string | null
-	updated_at: string
-	text: string
+	updated_at: string | null
+	text: string | null
 }
 
 export interface BackendPedido {
@@ -148,7 +150,10 @@ export interface BackendPedido {
 	id_ubicacion: number | null
 	id_venta: number | null
 	id_cliente: number | null
+	id_bodega: number | null
 	cliente: any
+	bodega: any
+	ubicacion: any
 	iva_desglose?: { [key: number]: number }
 	detalles: any[]
 }
@@ -343,10 +348,12 @@ function POSContent() {
 			id: `order-${backendOrder.id}`, 
 			id_backend: backendOrder.id, 
 			id_ubicacion: backendOrder.id_ubicacion,
-			id_bodega: selectedBodega ? selectedBodega.id: null,
+			id_bodega: backendOrder.id_bodega,
 			id_venta: backendOrder.id_venta,
 			id_cliente: backendOrder.id_cliente,
 			cliente: backendOrder.cliente,
+			bodega: backendOrder.bodega,
+			ubicacion: backendOrder.ubicacion,
 			ubicacion_nombre: backendOrder.cliente?.nombre_completo.trim() || "Pedido Mostrador", 
 			productos: frontendItems,
 			subtotal: Number.parseFloat(backendOrder.subtotal),
@@ -361,12 +368,16 @@ function POSContent() {
 	}, []);
 	
 	// Función para guardar en el backend
-	const saveOrderToBackend = async (order: Order, cliente: Cliente | null, bodega: Bodega | null): Promise<Order> => {
+	const saveOrderToBackend = async (
+		order: Order,
+		cliente: Cliente | null,
+		location: Ubicacion | null,
+		bodega: Bodega | null,
+	): Promise<Order> => {
 		try {
-			console.log('cliente: ',cliente);
-			const clienteId = cliente?.id?.toString() || null
-			const bodegaId = bodega?.id?.toString() || null
-			console.log('order: ',order);
+			const clienteId = cliente?.id || null
+			const bodegaId = bodega?.id || null
+			const locationId = location?.id || null
 
 			const payload = {
 				productos: order.productos.map(p => ({
@@ -382,12 +393,12 @@ function POSContent() {
 					retencion_valor: p.retencion_valor.toString(),
 					total: p.total.toString(),
 				})),
-				id_ubicacion: order.id_ubicacion,
+				id_ubicacion: locationId,
 				id_bodega: bodegaId, 
 				consecutivo: order.id.replace('order-', ''),
 				id_cliente: clienteId,
 				fecha_manual: new Date().toISOString().split('T')[0],
-				id_resolucion: "1",
+				id_resolucion: null,
 				id_vendedor: null,
 				id_pedido: order.id_backend ? order.id_backend.toString() : null,
 				observacion: `Pedido desde POS - ${order.ubicacion_nombre}`
@@ -424,12 +435,13 @@ function POSContent() {
 	}
 	
 	// 🔥 FUNCIÓN CENTRAL DE ACTUALIZACIÓN
-	const updateOrderLocallyAndRemotely = useCallback(async (updatedOrder: Order, currentCliente: Cliente | null) => {
+	const updateOrderLocallyAndRemotely = useCallback(async (updatedOrder: Order, currentCliente: Cliente | null, currentLocation: Ubicacion | null, currentBodega: Bodega | null) => {
         setCurrentOrder(updatedOrder);
         setOrders(prev => prev.map(o => (o.id === updatedOrder.id ? updatedOrder : o)));
 		
         try {
-            const savedOrder = await saveOrderToBackend(updatedOrder, currentCliente, selectedBodega);
+            const savedOrder = await saveOrderToBackend(updatedOrder, currentCliente, currentLocation, currentBodega);
+
             if (savedOrder.id_backend && (!updatedOrder.id_backend || savedOrder.id_backend !== updatedOrder.id_backend)) {
                 setCurrentOrder(savedOrder);
                 setOrders(prev => prev.map(o => (o.id === savedOrder.id ? savedOrder : o)));
@@ -463,16 +475,77 @@ function POSContent() {
 
 				const backendOrders: BackendPedido[] = response.data.data || [];
 				const detailsOrder = response.data.data.length ? response.data.data[0].detalles : []
-
+				
 				const newOrders = backendOrders
-					.filter(o => o.estado === 1) 
-					.map(mapBackendOrderToFrontend);
+					.filter(o => o.estado === 1)
+					.map(mapBackendOrderToFrontend)
+				
+				setOrders(newOrders)
 
-				setOrders(newOrders);
+				const bodega = newOrders[0].bodega;
+				const cliente = newOrders[0].cliente;
+				const ubicacion = newOrders[0].ubicacion;
+
+				if (bodega) {
+					const dataBodega = {
+						id: bodega ? bodega.id : null,
+						codigo: bodega ? bodega.codigo : null,
+						nombre: bodega ? bodega.nombre : null,
+						ubicacion: bodega ? bodega.ubicacion : null,
+						id_centro_costos: bodega ? bodega.id_centro_costos : null,
+						id_responsable: bodega ? bodega.id_responsable : null,
+						id_cuenta_cartera: bodega ? bodega.id_cuenta_cartera : null,
+						consecutivo: bodega ? bodega.consecutivo : null,
+						consecutivo_parqueadero: bodega ? bodega.consecutivo_parqueadero : null,
+						created_by: bodega ? bodega.created_by : null,
+						updated_by: bodega ? bodega.updated_by : null,
+						created_at: bodega ? bodega.created_at : null,
+						updated_at: bodega ? bodega.updated_at : null,
+						text: bodega ? bodega.codigo+' - '+bodega.nombre : null,
+					}
+					setSelectedBodega(dataBodega)
+				}
+
+				if (cliente) {
+					const dataCliente = {
+						id: cliente.id,
+						id_tipo_documento: cliente.id_tipo_documento,
+						id_ciudad: cliente.id_ciudad,
+						primer_nombre: cliente.primer_nombre,
+						segundo_nombre: cliente.segundo_nombre,
+						primer_apellido: cliente.primer_apellido,
+						segundo_apellido: cliente.segundo_apellido,
+						email: cliente.email,
+						sumar_aiu: cliente.sumar_aiu,
+						porcentaje_aiu: cliente.porcentaje_aiu,
+						porcentaje_reteica: cliente.porcentaje_reteica,
+						apartamentos: cliente.apartamentos,
+						id_responsabilidades: cliente.id_responsabilidades,
+						telefono: cliente.telefono,
+						text: cliente.text,
+						nombre_completo: cliente.nombre_completo
+					}
+					setSelectedCliente(dataCliente)
+				}
+
+				if (ubicacion) {
+					const pedidoUbi = ubicacion.pedido;
+					const dataUbicacion = {
+						id: ubicacion.id,
+						nombre: ubicacion.nombre,
+						text: ubicacion.nombre+' - '+ubicacion.codigo,
+						codigo: ubicacion.codigo,
+						pedido: {
+							id: pedidoUbi ? pedidoUbi.id : null,
+							id_venta: pedidoUbi ? pedidoUbi.id_venta : null
+						}
+					}
+					setSelectedLocation(dataUbicacion)
+				}
 
 				if (!currentOrder && newOrders.length > 0) {
-					setCurrentOrder(newOrders[0]);
-				} 
+					setCurrentOrder(newOrders[0])
+				}
 
 			} catch (error) {
 				console.error('❌ Error cargando pedidos desde el backend:', error);
@@ -511,18 +584,19 @@ function POSContent() {
 		setCurrentOrder(order)
 	}
 
-	const createNewOrder = async (locationId?: number, locationName?: string) => {
+	const createNewOrder = async () => {
+
 		const newOrder: Order = {
 			id: `order-${Date.now()}`,
 			id_backend: null,
 			id_bodega: selectedBodega ? selectedBodega.id : null,
+			bodega: selectedBodega,
+			ubicacion: selectedCliente,
 			id_venta: null,
-			id_cliente: null,
-			id_ubicacion: locationId || null,
-			cliente: {
-				nombre_completo: ''
-			},
-			ubicacion_nombre: locationName || "Mostrador",
+			id_cliente: selectedCliente ? selectedCliente.id : null,
+			id_ubicacion: selectedLocation ? selectedLocation.id : null,
+			cliente: selectedCliente,
+			ubicacion_nombre: "Mostrador",
 			productos: [],
 			subtotal: 0,
 			iva: 0,
@@ -537,7 +611,7 @@ function POSContent() {
 		setCurrentOrder(newOrder);
 		
 		try {
-			const savedOrder = await saveOrderToBackend(newOrder, selectedCliente, selectedBodega)
+			const savedOrder = await saveOrderToBackend(newOrder, selectedCliente, selectedLocation, selectedBodega)
 			
 			if (savedOrder?.id_backend) {
 				setCurrentOrder(savedOrder)
@@ -551,7 +625,7 @@ function POSContent() {
 	// 🔥 FUNCIÓN MEJORADA PARA AGREGAR PRODUCTOS CON LA LÓGICA DE IVA
 	const addProductToOrder = async (product: Product, quantity = 1) => {
 		if (!currentOrder) {
-			await createNewOrder(selectedLocation?.id, selectedLocation?.nombre)
+			await createNewOrder()
 			return
 		}
 		
@@ -617,7 +691,7 @@ function POSContent() {
 		}
 		
 		const updatedOrder = calculateOrderTotals({ ...currentOrder, productos: updatedProducts })
-		await updateOrderLocallyAndRemotely(updatedOrder, selectedCliente)
+		await updateOrderLocallyAndRemotely(updatedOrder, selectedCliente, selectedLocation, selectedBodega)
 	}
 
 	const calculateProductTotals = (product: Product, quantity: number = 1) => {
@@ -737,7 +811,7 @@ function POSContent() {
 		});
 
 		const updatedOrder = calculateOrderTotals({ ...currentOrder, productos: updatedProducts });
-		await updateOrderLocallyAndRemotely(updatedOrder, selectedCliente);
+		await updateOrderLocallyAndRemotely(updatedOrder, selectedCliente, selectedLocation, selectedBodega);
 	};
 
 	const removeProductFromOrder = async (productId: number) => {
@@ -746,7 +820,7 @@ function POSContent() {
 		const updatedProducts = currentOrder.productos.filter((item) => item.id_producto !== productId)
 		
 		const updatedOrder = calculateOrderTotals({ ...currentOrder, productos: updatedProducts })
-		await updateOrderLocallyAndRemotely(updatedOrder, selectedCliente)
+		await updateOrderLocallyAndRemotely(updatedOrder, selectedCliente, selectedLocation, selectedBodega)
 	}
 
 	const updateProductInOrder = async (updatedProduct: OrderItem) => {
@@ -757,13 +831,20 @@ function POSContent() {
 		)
 
 		const updatedOrder = calculateOrderTotals({ ...currentOrder, productos: updatedProducts })
-		await updateOrderLocallyAndRemotely(updatedOrder, selectedCliente)
+		await updateOrderLocallyAndRemotely(updatedOrder, selectedCliente, selectedLocation, selectedBodega)
 	}
 	
 	const handleUpdateBodega = async (bodega: Bodega | null) => {
 		setSelectedBodega(bodega)
 		if (currentOrder) {
-			await updateOrderLocallyAndRemotely(currentOrder, selectedCliente) 
+			await updateOrderLocallyAndRemotely(currentOrder, selectedCliente, selectedLocation, bodega) 
+		}
+	}
+
+	const handleUpdateUbicacion = async (ubicacion: Ubicacion | null) => {
+		setSelectedLocation(ubicacion)
+		if (currentOrder) {
+			await updateOrderLocallyAndRemotely(currentOrder, selectedCliente, ubicacion, selectedBodega) 
 		}
 	}
 
@@ -771,27 +852,7 @@ function POSContent() {
 
 		setSelectedCliente(cliente)
 		if (currentOrder) {
-			let dataCurrentOrder = {
-				id: currentOrder.id,
-				id_backend: currentOrder.id_backend,
-				id_ubicacion: currentOrder.id_ubicacion,
-				id_bodega: currentOrder.id_bodega,
-				id_venta: currentOrder.id_venta,
-				id_cliente: cliente?.id ?? null,
-				cliente: cliente,
-				ubicacion_nombre: currentOrder.ubicacion_nombre,
-				productos: currentOrder.productos,
-				subtotal: currentOrder.subtotal,
-				iva: currentOrder.iva,
-				retencion: currentOrder.retencion,
-				porcentaje_retencion: currentOrder.porcentaje_retencion,
-				total: currentOrder.total,
-				fecha: currentOrder.fecha,
-				estado: currentOrder.estado,
-				iva_desglose: currentOrder.iva_desglose
-			}
-
-			await updateOrderLocallyAndRemotely(dataCurrentOrder, cliente)
+			await updateOrderLocallyAndRemotely(currentOrder, cliente, selectedLocation, selectedBodega)
 		}
 	}
 	
@@ -812,7 +873,6 @@ function POSContent() {
 				setCurrentOrder(remainingOrders.length > 0 ? remainingOrders[0] : null)
 			}
 		}
-		console.log('response: ',response);
 
 	}
 
@@ -964,13 +1024,13 @@ function POSContent() {
 					orders={orders}
 					currentOrder={currentOrder}
 					onSelectOrder={selectOrder}
-					onNewOrder={() => createNewOrder(selectedLocation?.id, selectedLocation?.nombre)}
+					onNewOrder={() => createNewOrder()}
 				/>
 
 				<div className="flex-1 flex flex-col overflow-hidden">
 					<div className="p-4 border-b border-border flex-shrink-0">
 						<LocationSelector 
-							onLocationSelect={setSelectedLocation}
+							onLocationSelect={handleUpdateUbicacion}
 							selectedLocation={selectedLocation}
 							onNewOrder={createNewOrder}
 						/>
@@ -985,7 +1045,7 @@ function POSContent() {
 					<OrderPanel
 						currentOrder={currentOrder}
 						onCompleteOrder={completeOrder}
-						onNewOrder={() => createNewOrder(selectedLocation?.id, selectedLocation?.nombre)}
+						onNewOrder={() => createNewOrder()}
 						onUpdateQuantity={updateProductQuantity}
 						onRemoveProduct={removeProductFromOrder}
 						onUpdateProduct={updateProductInOrder}

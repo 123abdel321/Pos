@@ -123,9 +123,9 @@ export function OrderPanel({
     )
 
     const filteredBodegas = bodegas.filter(bodega =>
-        bodega.text.toLowerCase().includes(searchBodega.toLowerCase()) ||
+        (bodega.text ?? "").toLowerCase().includes(searchBodega.toLowerCase()) ||
         bodega.nombre.toLowerCase().includes(searchBodega.toLowerCase())
-    )
+    );
 
     const handleSelectCliente = (cliente: Cliente) => {
         setSearchCliente("")
