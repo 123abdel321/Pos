@@ -896,9 +896,23 @@ function POSContent() {
 	}
 
 	const handleUpdateUbicacion = async (ubicacion: Ubicacion | null) => {
-		setSelectedLocation(ubicacion)
-		if (currentOrder) {
-			await updateOrderLocallyAndRemotely(currentOrder, selectedCliente, ubicacion, selectedBodega) 
+		var pedidoSeteado = false;
+		if (ubicacion && ubicacion.pedido) {//SI LA UBICACION TIENE PEDIDOS CAMBIAR AL PEDIDO
+			const idPedido = ubicacion.pedido.id;
+			const pedidoEncontrado = orders.find(order => order.id_backend === idPedido);
+
+			if (pedidoEncontrado) {
+				pedidoSeteado = true;
+				selectOrder(pedidoEncontrado)
+			}
+			
+		} 
+		//ACTUALIZAR UBICACION DEL PEDIDO
+		if (!pedidoSeteado) {
+			setSelectedLocation(ubicacion)
+			if (currentOrder) {
+				await updateOrderLocallyAndRemotely(currentOrder, selectedCliente, ubicacion, selectedBodega) 
+			}
 		}
 	}
 
@@ -995,11 +1009,8 @@ function POSContent() {
 				<div className="flex items-center justify-between px-6 py-4">
 				<div className="flex items-center gap-4">
 					<h1 className="text-2xl font-bold text-foreground">Sistema POS</h1>
-					<div className="text-sm text-muted-foreground hidden sm:block">
-					{selectedLocation ? `Ubicación: ${selectedLocation.nombre}` : "Seleccionar ubicación"}
-					</div>
 					<div className="text-sm px-2 py-1 rounded bg-muted">
-						IVA: {ivaIncluido ? 'Incluido' : 'Excluido'}
+						{ivaIncluido ? 'IVA Incluido' : ''}
 					</div>
 				</div>
 
