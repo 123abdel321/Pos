@@ -12,12 +12,14 @@ interface LocationSelectorProps {
   selectedLocation: Ubicacion | null
   onLocationSelect: (location: Ubicacion) => void
   onNewOrder: (locationId?: number, locationName?: string) => void
+  occupiedLocationIds: number[]
 }
 
 export function LocationSelector({
   selectedLocation,
   onLocationSelect,
   onNewOrder,
+  occupiedLocationIds,
 }: LocationSelectorProps) {
   const [ubicaciones, setUbicaciones] = useState<Ubicacion[]>([])
   const [searchTerm, setSearchTerm] = useState("")
@@ -128,7 +130,7 @@ export function LocationSelector({
               <MapPin className="h-3 w-3" />
               <span className="truncate max-w-[100px]">{location.nombre}</span>
 
-              {location.pedido && (
+              {occupiedLocationIds.includes(location.id) && (
                 <div className="ml-1 w-2 h-2 bg-orange-500 rounded-full" />
               )}
             </button>
