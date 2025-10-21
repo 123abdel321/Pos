@@ -454,7 +454,7 @@ function POSContent() {
 
 	// --- LOGICA DE CARGA INICIAL Y CLIENTE ---
 	
-	// Carga Cliente por defecto desde localStorage 
+	// Carga Cliente 7 Bodega por defecto desde localStorage 
 	useEffect(() => {
 		if (typeof window !== 'undefined') {
 			const clienteGuardado = localStorage.getItem('clientePorDefecto');
@@ -463,6 +463,15 @@ function POSContent() {
 					setSelectedCliente(JSON.parse(clienteGuardado));
 				} catch (error) {
 					console.error('❌ Error cargando cliente desde localStorage:', error);
+				}
+			}
+
+			const bodegaGuardado = localStorage.getItem('bodegaPorDefecto');
+			if (bodegaGuardado) {
+				try {
+					setSelectedBodega(JSON.parse(bodegaGuardado));
+				} catch (error) {
+					console.error('❌ Error cargando bodega desde localStorage:', error);
 				}
 			}
 		}
@@ -641,6 +650,17 @@ function POSContent() {
 				setSelectedCliente(clienteSeteado);
 			} catch (error) {
 				console.error('❌ Error cargando cliente desde localStorage:', error);
+			}
+		}
+
+		const bodegaGuardado = localStorage.getItem('bodegaPorDefecto');
+		var bodegaSeteado = null
+		if (bodegaGuardado) {
+			bodegaSeteado = JSON.parse(bodegaGuardado);
+			try {
+				setSelectedBodega(bodegaSeteado);
+			} catch (error) {
+				console.error('❌ Error cargando bodega desde localStorage:', error);
 			}
 		}
 

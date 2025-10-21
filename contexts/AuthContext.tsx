@@ -71,6 +71,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 					Authorization: `Bearer ${token}`
 					}
 				});
+
+				console.log('response: ',response);
 				
 				if (response.data.success) {
 					setIsAuthenticated(true);
@@ -97,8 +99,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 							text: response.data.data.cliente.text,
 							nombre_completo: response.data.data.cliente.nombre_completo
 						};
-						
 						localStorage.setItem('clientePorDefecto', JSON.stringify(clienteDefault));
+					}
+
+					// 👇 GUARDAR BODEGA POR DEFECTO EN LOCALSTORAGE
+					if (response.data.data?.bodega) {
+						const bodega = response.data.data.bodega
+						const bodegaDefault = {
+							id: bodega.id,
+							codigo: bodega.codigo,
+							nombre: bodega.nombre,
+							ubicacion: bodega.ubicacion,
+							id_centro_costos: bodega.id_centro_costos,
+							id_responsable: bodega.id_responsable,
+							id_cuenta_cartera: bodega.id_cuenta_cartera,
+							consecutivo: bodega.consecutivo,
+							consecutivo_parqueadero: bodega.consecutivo_parqueadero,
+							created_by: bodega.created_by,
+							updated_by: bodega.updated_by,
+							created_at: bodega.created_at,
+							updated_at: bodega.updated_at,
+							text: bodega.codigo+' - '+bodega.nombre,
+						}
+						localStorage.setItem('bodegaPorDefecto', JSON.stringify(bodegaDefault));
 					}
 				} else {
 					clearAuth();
@@ -122,6 +145,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 				clearAuth();
 				// También limpiar el cliente por defecto
 				localStorage.removeItem('clientePorDefecto');
+				localStorage.removeItem('bodegaPorDefecto');
 			}
 			setIsAuthenticated(false);
 			setUser(null);
