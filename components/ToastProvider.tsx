@@ -1,7 +1,18 @@
+// components/ToastProvider.tsx (o donde lo almacenes)
+
 "use client"
 
 import React, { createContext, useContext, useEffect, useRef, useState } from "react"
 import { X, AlertCircle, CheckCircle, AlertTriangle, Info } from "lucide-react"
+
+// 🔥 TIPADO GLOBAL PARA USAR window.emitToast EN CUALQUIER PARTE
+declare global {
+  interface Window {
+    emitToast: (opts: ToastOptions) => void
+  }
+}
+// --------------------------------------------------------------------
+
 
 type ToastType = "error" | "success" | "warning" | "info"
 
@@ -44,9 +55,9 @@ function playToastSound(type: ToastType) {
 
     const presets: Record<ToastType, { freq: number; time: number; gain: number }> = {
       success: { freq: 880, time: 0.12, gain: 0.04 },
-      info:    { freq: 740, time: 0.12, gain: 0.035 },
+      info: 	 { freq: 740, time: 0.12, gain: 0.035 },
       warning: { freq: 560, time: 0.14, gain: 0.045 },
-      error:   { freq: 320, time: 0.16, gain: 0.05 },
+      error: 	 { freq: 320, time: 0.16, gain: 0.05 },
     }
 
     const { freq, time, gain: vol } = presets[type]
@@ -282,7 +293,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     // @ts-ignore
     window.addEventListener("showToast", standard)
 
-    // Exponer helper global opcional
+    // Exponer helper global opcional (compatible con el tipado global)
     ;(window as any).emitToast = (detail: ToastOptions) =>
       window.dispatchEvent(new CustomEvent("showToast", { detail }))
 

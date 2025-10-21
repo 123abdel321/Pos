@@ -678,6 +678,30 @@ function POSContent() {
 	
 	// 🔥 FUNCIÓN MEJORADA PARA AGREGAR PRODUCTOS CON LA LÓGICA DE IVA
 	const addProductToOrder = async (product: Product, quantity = 1) => {
+
+		if (!selectedCliente || !selectedBodega) {
+			let missing: string[] = [];
+			if (!selectedCliente) {
+				missing.push('Cliente');
+			}
+			if (!selectedBodega) {
+				missing.push('Bodega');
+			}
+
+			const message = `No puedes agregar productos sin: ${missing.join(' y ')}.`;
+
+			// 1. Mostrar el Toast con el mensaje dinámico
+			window.dispatchEvent(new CustomEvent('showToast', {
+				detail: { 
+					message: message,
+					type: 'warning',
+					autoClose: true,
+					duration: 5000
+				}
+			}));
+			return
+		}
+
 		if (!currentOrder) {
 			await createNewOrder()
 			return
@@ -890,8 +914,15 @@ function POSContent() {
 	
 	const handleUpdateBodega = async (bodega: Bodega | null) => {
 		setSelectedBodega(bodega)
-		if (currentOrder) {
+		if (currentOrder && selectedCliente && bodega) {
 			await updateOrderLocallyAndRemotely(currentOrder, selectedCliente, selectedLocation, bodega) 
+		}
+	}
+
+	const handleUpdateCliente = async (cliente: Cliente | null) => {
+		setSelectedCliente(cliente)
+		if (currentOrder && selectedBodega && cliente) {
+			await updateOrderLocallyAndRemotely(currentOrder, cliente, selectedLocation, selectedBodega)
 		}
 	}
 
@@ -913,13 +944,6 @@ function POSContent() {
 			if (currentOrder) {
 				await updateOrderLocallyAndRemotely(currentOrder, selectedCliente, ubicacion, selectedBodega) 
 			}
-		}
-	}
-
-	const handleUpdateCliente = async (cliente: Cliente | null) => {
-		setSelectedCliente(cliente)
-		if (currentOrder && cliente) {
-			await updateOrderLocallyAndRemotely(currentOrder, cliente, selectedLocation, selectedBodega)
 		}
 	}
 	

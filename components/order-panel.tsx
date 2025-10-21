@@ -65,68 +65,69 @@ export function OrderPanel({
     selectedCliente,
     selectedBodega
 }: OrderPanelProps) {
-    const [editingProduct, setEditingProduct] = useState<OrderItem | null>(null)
-    const [clientes, setClientes] = useState<Cliente[]>([])
-    const [bodegas, setBodegas] = useState<Bodega[]>([])
-    const [searchCliente, setSearchCliente] = useState("")
-    const [searchBodega, setSearchBodega] = useState("")
-    const [loadingClientes, setLoadingClientes] = useState(false)
-    const [loadingBodegas, setLoadingBodegas] = useState(false)
-    // 🔥 ESTADO CLAVE PARA EXPANDIR/COLAPSAR HORIZONTALMENTE
     const [isExpanded, setIsExpanded] = useState(true)
 
-    // Cargar clientes (Sin cambios)
+    const [searchBodega, setSearchBodega] = useState("")
+    const [searchCliente, setSearchCliente] = useState("")
+    const [loadingBodegas, setLoadingBodegas] = useState(false)
+    const [loadingClientes, setLoadingClientes] = useState(false)
+    const [bodegasResultado, setBodegasResultado] = useState<Bodega[]>([])
+    const [clientesResultado, setClientesResultado] = useState<Cliente[]>([])
+    const [editingProduct, setEditingProduct] = useState<OrderItem | null>(null)
+
     useEffect(() => {
-        const loadClientes = async () => {
+        if (searchCliente.trim() === "") {
+            setClientesResultado([])
+            return
+        }
+
+        const delayDebounceFn = setTimeout(async () => {
             try {
                 setLoadingClientes(true)
-                const response = await apiClient.get('/nit/combo-nit')
+
+                const response = await apiClient.get('/nit/combo-nit', {
+                    params: {
+                        search: searchCliente // Enviamos el término de búsqueda
+                    }
+                })
                 const data = response.data.data || response.data
-                setClientes(Array.isArray(data) ? data : [])
+                setClientesResultado(Array.isArray(data) ? data : [])
             } catch (error) {
-                console.error('Error loading clientes:', error)
-                setClientes([])
+                console.error('Error searching clientes:', error)
+                setClientesResultado([])
             } finally {
                 setLoadingClientes(false)
             }
-        }
-        loadClientes()
-    }, [])
+        }, 500)
 
-    // Cargar bodegas (Sin cambios)
+        return () => clearTimeout(delayDebounceFn)
+    }, [searchCliente])
+
     useEffect(() => {
-        const loadBodegas = async () => {
+        if (searchBodega.trim() === "") {
+            setBodegasResultado([])
+            return
+        }
+
+        const delayDebounceFn = setTimeout(async () => {
             try {
                 setLoadingBodegas(true)
-                const response = await apiClient.get('/bodega/combo-bodega')
-                const data = response.data.data || response.data
-                setBodegas(Array.isArray(data) ? data : [])
-                
-                if (data.length > 0 && !selectedBodega) {
-                    if (onUpdateBodega) {
-                        onUpdateBodega(data[0])
+                const response = await apiClient.get('/bodega/combo-bodega', {
+                    params: {
+                        search: searchBodega // Enviamos el término de búsqueda
                     }
-                }
+                })
+                const data = response.data.data || response.data
+                setBodegasResultado(Array.isArray(data) ? data : [])
             } catch (error) {
-                console.error('Error loading bodegas:', error)
-                setBodegas([])
+                console.error('Error searching bodegas:', error)
+                setBodegasResultado([])
             } finally {
                 setLoadingBodegas(false)
             }
-        }
-        loadBodegas()
-    }, [])
-    
-    // Funciones helper (Sin cambios)
-    const filteredClientes = clientes.filter(cliente =>
-        cliente.text.toLowerCase().includes(searchCliente.toLowerCase()) ||
-        cliente.nombre_completo.toLowerCase().includes(searchCliente.toLowerCase())
-    )
-
-    const filteredBodegas = bodegas.filter(bodega =>
-        (bodega.text ?? "").toLowerCase().includes(searchBodega.toLowerCase()) ||
-        bodega.nombre.toLowerCase().includes(searchBodega.toLowerCase())
-    );
+        }, 500)
+        return () => clearTimeout(delayDebounceFn)
+    }, [searchBodega])
 
     const handlePrintOrder = (orderId: number | null) => {
         // Reemplazar con su endpoint real de PDF
@@ -187,7 +188,6 @@ export function OrderPanel({
             <div className="text-center">
                 <ShoppingCart className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-foreground mb-2">No hay pedido activo</h3>
-                <p className="text-muted-foreground mb-6">Selecciona una ubicación o inicia una venta rápida</p>
                 <Button onClick={onNewOrder} className="gap-2 btn-bg-info">
                     <Plus className="h-4 w-4" />
                     Nuevo Pedido
@@ -329,12 +329,13 @@ export function OrderPanel({
                                                 </div>
                                                 <div className="max-h-44 overflow-auto">
                                                     {loadingBodegas ? (
+                                                        // 🔥 Mostrar Spinner mientras carga
                                                         <div className="text-center py-2">
                                                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mx-auto"></div>
-                                                            <p className="text-[10px] mt-1">Cargando...</p>
+                                                            <p className="text-[10px] mt-1 text-muted-foreground">Buscando bodegas...</p>
                                                         </div>
-                                                    ) : filteredBodegas.length > 0 ? (
-                                                        filteredBodegas.map((bodega) => (
+                                                    ) : bodegasResultado.length > 0 ? ( // 🔥 CAMBIO CLAVE: Usar bodegasResultado
+                                                        bodegasResultado.map((bodega) => (
                                                             <DropdownMenuItem
                                                                 key={bodega.id}
                                                                 onClick={() => handleSelectBodega(bodega)}
@@ -346,9 +347,15 @@ export function OrderPanel({
                                                                 <div className="text-[10px] text-muted-foreground">{bodega.ubicacion}</div>
                                                             </DropdownMenuItem>
                                                         ))
-                                                    ) : (
+                                                    ) : searchBodega.trim() !== "" ? (
+                                                        // Si no hay resultados y la caja de búsqueda NO está vacía
                                                         <div className="text-center py-2 text-muted-foreground text-[11px]">
                                                             Sin resultados
+                                                        </div>
+                                                    ) : (
+                                                        // Si la caja de búsqueda ESTÁ vacía
+                                                        <div className="text-center py-2 text-muted-foreground text-[11px] italic">
+                                                            Empieza a escribir para buscar bodegas...
                                                         </div>
                                                     )}
                                                 </div>
@@ -401,14 +408,16 @@ export function OrderPanel({
                                                         className="pl-6 h-6 text-xs"
                                                     />
                                                 </div>
+
+
                                                 <div className="max-h-44 overflow-auto">
                                                     {loadingClientes ? (
                                                         <div className="text-center py-2">
                                                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mx-auto"></div>
-                                                            <p className="text-[10px] mt-1">Cargando...</p>
+                                                            <p className="text-[10px] mt-1 text-muted-foreground">Buscando clientes...</p>
                                                         </div>
-                                                    ) : filteredClientes.length > 0 ? (
-                                                        filteredClientes.map((cliente) => (
+                                                    ) : clientesResultado.length > 0 ? ( // 🔥 CAMBIO CLAVE: Usar clientesResultado
+                                                        clientesResultado.map((cliente) => (
                                                             <DropdownMenuItem
                                                                 key={cliente.id}
                                                                 onClick={() => handleSelectCliente(cliente)}
@@ -420,12 +429,18 @@ export function OrderPanel({
                                                                 <div className="text-[10px] text-muted-foreground">{cliente.text}</div>
                                                             </DropdownMenuItem>
                                                         ))
-                                                    ) : (
+                                                    ) : searchCliente.trim() !== "" ? ( // 🔥 Muestra "Sin resultados" si buscó algo
                                                         <div className="text-center py-2 text-muted-foreground text-[11px]">
                                                             Sin resultados
                                                         </div>
+                                                    ) : ( // 🔥 Muestra esto si la caja está vacía, para invitar a la búsqueda
+                                                        <div className="text-center py-2 text-muted-foreground text-[11px]">
+                                                            Empieza a escribir para buscar clientes...
+                                                        </div>
                                                     )}
                                                 </div>
+
+
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     )}
@@ -595,7 +610,7 @@ export function OrderPanel({
                         <div className="text-center">
                             <ShoppingCart className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                             <h3 className="text-lg font-medium text-foreground mb-2">No hay pedido activo</h3>
-                            <p className="text-muted-foreground mb-6">Selecciona una ubicación o inicia una venta rápida</p>
+                            <p className="text-muted-foreground mb-6">Selecciona una ubicación o inicia una venta</p>
                             <Button onClick={onNewOrder} className="gap-2 btn-bg-info">
                             <Plus className="h-4 w-4" />
                             Nuevo Pedido
