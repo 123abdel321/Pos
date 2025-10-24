@@ -195,10 +195,10 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
         </div>
         
         {/* Indicador de shortcuts */}
-        <div className="text-xs text-muted-foreground mt-1 flex justify-between">
+        {/* <div className="text-xs text-muted-foreground mt-1 flex justify-between">
           <span>Presiona Esc para limpiar</span>
           <span>Ctrl + / para focus</span>
-        </div>
+        </div> */}
       </div>
 
       {/* Categorías */}

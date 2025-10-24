@@ -640,7 +640,7 @@ function POSContent() {
 		setCurrentOrder(order)
 	}
 
-	const createNewOrder = async () => {
+	const createNewOrder = async (ubicacion: Ubicacion | null = null) => {
 
 		const clienteGuardado = localStorage.getItem('clientePorDefecto');
 		var clienteSeteado = null
@@ -664,7 +664,11 @@ function POSContent() {
 			}
 		}
 
-		setSelectedLocation(null);
+		if (ubicacion) {
+			setSelectedLocation(ubicacion);
+		} else {
+			setSelectedLocation(null);
+		}
 
 		const newOrder: Order = {
 			id: `order-${Date.now()}`,
@@ -674,9 +678,9 @@ function POSContent() {
 			bodega: selectedBodega,
 			id_cliente: clienteSeteado ? clienteSeteado.id : null,
 			cliente: clienteSeteado,
-			id_ubicacion: null,
-			ubicacion: null,
-			ubicacion_nombre: "Mostrador",
+			id_ubicacion: ubicacion ? ubicacion.id : null,
+			ubicacion: ubicacion,
+			ubicacion_nombre: ubicacion ? ubicacion.nombre : "Mostrador",
 			productos: [],
 			subtotal: 0,
 			iva: 0,
@@ -691,7 +695,7 @@ function POSContent() {
 		setCurrentOrder(newOrder);
 		
 		try {
-			const savedOrder = await saveOrderToBackend(newOrder, selectedCliente, null, selectedBodega)
+			const savedOrder = await saveOrderToBackend(newOrder, selectedCliente, ubicacion, selectedBodega)
 			
 			if (savedOrder?.id_backend) {
 				setCurrentOrder(savedOrder)
@@ -954,9 +958,8 @@ function POSContent() {
 
 	const handleUpdateUbicacion = async (ubicacion: Ubicacion | null) => {
     
-		// Si la ubicación es null, simplemente la seteamos y si hay pedido, lo desasignamos.
+		//ACTUALIZAR SIN UBICACIÓN
 		if (!ubicacion) {
-			// Lógica para desasignar (cubierta en el punto 3/4)
 			if (currentOrder) {
 				await updateOrderLocallyAndRemotely(
 					{...currentOrder, id_ubicacion: null, ubicacion: null, ubicacion_nombre: "Sin Ubicación"}, 
@@ -969,72 +972,22 @@ function POSContent() {
 			return;
 		}
 
-		// 🔥 1. Manejo del pedido ya existente en la nueva ubicación (Lógica basada en el estado VIVO 'orders')
-		
-		// Buscamos un pedido PENDIENTE que ya esté usando esta ubicación en nuestro estado local 'orders'
+		//BUSCAR PEDIDO PENDIENTE
 		const pedidoOcupandoUbicacion = orders.find(
 			order => order.id_ubicacion === ubicacion.id && order.estado === 'pendiente' 
 		);
-
 		if (pedidoOcupandoUbicacion) {
-			// Si hay un pedido activo ocupando la ubicación:
-			
-			// Si ya estamos en ese pedido, no hacemos nada (simplemente aseguramos la selección visual)
 			if (currentOrder && currentOrder.id === pedidoOcupandoUbicacion.id) {
 				setSelectedLocation(ubicacion);
-				return;
+				return
 			}
-
-			// Si es otro pedido, cambiamos a ese pedido (Pedido 1 en tu ejemplo)
-			selectOrder(pedidoOcupandoUbicacion);
-			
-			window.emitToast({
-				message: `Cambiando a Pedido #${pedidoOcupandoUbicacion.id_backend} en ${ubicacion.nombre}.`,
-				type: 'info',
-			});
-			return; // Termina la función aquí
-		}
-
-		// ----------------------------------------------------------------------
-		// 2. Si la ubicación está libre (según 'orders'), actualizamos la ubicación del currentOrder
-		// ----------------------------------------------------------------------
-		
-		// Si no hay currentOrder, solo seteamos la ubicación seleccionada para futuras acciones
-		if (!currentOrder) {
-			setSelectedLocation(ubicacion);
+			selectOrder(pedidoOcupandoUbicacion)
 			return;
 		}
-		
-		// 3. Crear una copia del currentOrder y asignarle la nueva ubicación
-		let updatedOrder = { ...currentOrder };
 
-		// b) Asignar la nueva ubicación
-		updatedOrder.id_ubicacion = ubicacion.id;
-		updatedOrder.ubicacion = ubicacion;
-		updatedOrder.ubicacion_nombre = ubicacion.nombre;
-
-		// 4. Actualizar el estado local y remoto
-		try {
-			await updateOrderLocallyAndRemotely(
-				updatedOrder, 
-				selectedCliente, 
-				ubicacion,
-				selectedBodega
-			);
-			
-			setSelectedLocation(ubicacion);
-			
-			window.emitToast({
-				message: `Ubicación actualizada a ${ubicacion.nombre}.`,
-				type: 'success',
-			});
-		} catch (error) {
-			console.error("Error al actualizar ubicación del pedido:", error);
-			window.emitToast({
-				message: 'Error al cambiar la ubicación. Intenta de nuevo.',
-				type: 'error',
-			});
-		}
+		//CREAR NUEVO PEDIDO CON LA UBICACIÓN
+		setSelectedLocation(ubicacion)
+		createNewOrder(ubicacion)
 	};
 	
 	const deleteOrder = async(orderId: number) => {
@@ -1201,8 +1154,7 @@ function POSContent() {
 
 				<div className="flex-1 flex flex-col overflow-hidden">
 					<div className="p-4 border-b border-border flex-shrink-0">
-						<LocationSelector 
-							onNewOrder={createNewOrder}
+						<LocationSelector
 							selectedLocation={selectedLocation}
 							onLocationSelect={handleUpdateUbicacion}
         					occupiedLocationIds={occupiedLocationIds}

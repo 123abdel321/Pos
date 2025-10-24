@@ -87,7 +87,7 @@ export function PaymentModal({ order, onPayment, onClose }: PaymentModalProps) {
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null)
   const [selectedResolution, setSelectedResolution] = useState<string>("")
   const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false) // Nuevo estado para el loading del botón
+  const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
   // Estados para la entrada de valor
@@ -102,7 +102,7 @@ export function PaymentModal({ order, onPayment, onClose }: PaymentModalProps) {
         setLoading(true)
         setError(null)
         
-        // Consumo RESTAURADO de los END-POINTS
+        // Simulación de consumo de API (usando tu estructura original)
         const [paymentResponse, resolutionResponse] = await Promise.all([
           apiClient.get('/forma-pago/combo-forma-pago'),
           apiClient.get('/resoluciones/combo-resoluciones')
@@ -158,9 +158,6 @@ export function PaymentModal({ order, onPayment, onClose }: PaymentModalProps) {
     return resolution ? `${resolution.prefijo}${resolution.consecutivo}` : ""
   }, [selectedResolution, resolutions])
 
-
-  // --- V. Gestión de Pagos (Acciones) ---
-  
   const addPayment = useCallback((amount: number, method: PaymentMethod, bills: BillEntry[] | undefined = undefined) => {
     if (amount <= 0) return
     const newPayment: PaymentEntry = {
@@ -233,7 +230,7 @@ export function PaymentModal({ order, onPayment, onClose }: PaymentModalProps) {
       return
     }
     
-    setSubmitting(true) // Activar estado de carga
+    setSubmitting(true)
     
     try {
       const paymentData = {
@@ -254,394 +251,419 @@ export function PaymentModal({ order, onPayment, onClose }: PaymentModalProps) {
         consecutivo: selectedResolutionData.consecutivo,
         observacion: `Venta ${order.ubicacion_nombre}`,
       }
+      
       await onPayment(paymentData)
+      
     } catch (error) {
       console.error("Error al procesar el pago:", error)
       setError("Error al procesar el pago. Por favor, intente nuevamente.")
     } finally {
-      setSubmitting(false) // Desactivar estado de carga
+      setSubmitting(false) 
     }
   }
 
-  // --- VI. Renderizado del Componente ---
-
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      {/* Contenedor principal: pantalla completa */}
-      <DialogContent className="w-screen h-screen max-w-none max-h-none rounded-none flex flex-col p-0 shadow-2xl bg-card text-card-foreground">
-        
-        {/* Header - Compacto y Temático */}
-        <DialogHeader className="p-6 border-b border-border bg-card/50">
-          <DialogTitle className="flex items-center gap-3 text-2xl font-extrabold text-foreground">
-            <CreditCard className="h-6 w-6 text-primary" />
-            Procesar Pago
-            <span className="text-base font-medium text-muted-foreground ml-4">({order.ubicacion_nombre})</span>
-          </DialogTitle>
-        </DialogHeader>
-
-        {/* Main Grid Layout - EL ÚNICO ELEMENTO SCROLLABLE (flex-1) */}
-        <div className="flex-1 grid grid-cols-1 xl:grid-cols-4 gap-6 p-6 overflow-y-auto">
-          
-          {/* Left Column: Summary and Invoice Details (Col 1) */}
-          <div className="xl:col-span-1 space-y-6">
+        {/* Contenedor principal: w-screen h-screen flex flex-col (CORRECTO) */}
+        <DialogContent className="w-screen h-screen max-w-none max-h-none rounded-none flex flex-col p-0 shadow-2xl bg-[#0e162b] text-card-foreground">
             
-            {/* Invoice Details Card */}
-            <Card className="p-6 shadow-md border border-border">
-              <h3 className="font-bold text-lg mb-4 text-foreground">Detalles de Facturación</h3>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="resolution" className="text-sm font-semibold mb-2 block text-muted-foreground">Resolución *</Label>
-                  {loading ? (
-                    // Placeholder de carga para Select
-                    <div className="flex items-center gap-2 h-10 px-3 border rounded-md bg-muted animate-pulse">
-                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                    </div>
-                  ) : (
-                    <Select value={selectedResolution} onValueChange={setSelectedResolution}>
-                      <SelectTrigger className="h-10 text-sm">
-                        <SelectValue placeholder="Seleccionar resolución" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {resolutions.map((resolution) => (
-                          <SelectItem key={resolution.id} value={resolution.id.toString()}>
-                            {resolution.text}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
-                <div>
-                  <Label htmlFor="invoice" className="text-sm font-semibold mb-2 block text-muted-foreground">No. Factura *</Label>
-                  <Input
-                    id="invoice"
-                    value={getCurrentInvoiceNumber()}
-                    readOnly
-                    className="bg-muted font-mono text-sm h-10 text-primary font-bold border-dashed"
-                  />
-                </div>
-              </div>
-            </Card>
+            {/* Header - Alto Fijo */}
+            <DialogHeader className="p-6 border-b border-[#1b2641] bg-[#1a2035]">
+                <DialogTitle className="flex items-center gap-3 text-2xl font-extrabold text-foreground">
+                    <CreditCard className="h-6 w-6 text-primary" />
+                    Procesar Pago
+                    <span className="text-base font-medium text-muted-foreground ml-4">({order.ubicacion_nombre})</span>
+                </DialogTitle>
+            </DialogHeader>
 
-            {/* Order Summary Card */}
-            <Card className="p-6 shadow-lg border border-border">
-              <h3 className="font-bold text-lg mb-4 text-foreground">Resumen del Pedido</h3>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Subtotal:</span>
-                  <span className="font-semibold text-foreground">{formatPrice(order.subtotal)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">IVA (19%):</span>
-                  <span className="font-semibold text-foreground">{formatPrice(order.iva)}</span>
-                </div>
-                <Separator className="my-3 bg-border" />
-                <div className="flex justify-between font-extrabold text-xl pt-2 border-t border-dashed border-border">
-                  <span className="text-foreground">Total:</span>
-                  <span className="text-primary text-xl">{formatPrice(order.total)}</span>
-                </div>
-              </div>
-            </Card>
-            
-            {/* Payment Status Card (Resaltada Temáticamente) */}
-            <Card className="p-6 shadow-lg border-2 border-primary/20 bg-primary/5">
-              <h3 className="font-bold text-lg mb-4 text-foreground">Estado de Pago</h3>
-              <div className="space-y-3 text-base font-semibold">
-                <div className="flex justify-between items-center text-md">
-                  <span className="text-muted-foreground">Total Pagado:</span>
-                  <span className="text-success font-extrabold">{formatPrice(totalPaid)}</span>
-                </div>
-                <Separator className="my-3 bg-border" />
-                <div className="flex justify-between items-center text-lg">
-                  <span className="text-foreground">Faltante:</span>
-                  <span className={`font-extrabold ${remaining > 0 ? 'text-destructive' : 'text-success'}`}>
-                    {formatPrice(Math.abs(remaining))}
-                  </span>
-                </div>
-                {change > 0 && (
-                  <div className="flex justify-between items-center text-lg pt-2 border-t border-dashed border-border">
-                    <span className="text-info">Cambio:</span>
-                    <span className="font-extrabold text-info">{formatPrice(change)}</span>
-                  </div>
-                )}
-              </div>
-            </Card>
-
-          </div>
-
-          {/* Right Column: Payment Methods and Transactions (Col 2-4) */}
-          <div className="xl:col-span-3 space-y-6">
-            
-            {/* Payment Method Selection Grid */}
-            <Card className="p-6 shadow-md border border-border">
-              <h3 className="font-bold text-lg mb-4 text-foreground border-b border-border pb-3">Método de Pago</h3>
-                <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
-                  {loading ? (
-                      // PLACEHOLDERS DE LOS MÉTODOS DE PAGO
-                      [...Array(5)].map((_, i) => (
-                          <div 
-                              key={i} 
-                              className="h-20 border rounded-md bg-gray-100 dark:bg-gray-800 animate-pulse"
-                          ></div>
-                      ))
-                  ) : (
-                      paymentMethods.map((method) => (
-                          <Button
-                              key={method.id}
-                              variant={selectedMethod?.id === method.id ? "default" : "outline"}
-                              onClick={() => setSelectedMethod(method)}
-                              className={`flex flex-col items-center justify-center gap-1 h-20 px-1 py-2 text-center text-xs font-bold transition-all ${selectedMethod?.id === method.id ? 'shadow-lg ring-2 ring-primary/50' : 'hover:bg-gray-50/50'}`}
-                          >
-                              {getPaymentIcon(method.nombre)}
-
-                              <span className="text-xs w-full overflow-hidden leading-tight">
-                                  {method.text}
-                              </span>
-                          </Button>
-                      ))
-                  )}
-              </div>
-            </Card>
-
-            {/* Payment Interface (Conditional) */}
-            {selectedMethod && (
-              <Card className="p-6 shadow-lg bg-card/50 border border-border">
-                <h4 className="font-bold text-xl mb-4 text-foreground flex items-center gap-2">
-                  <Coins className="h-5 w-5 text-primary" />
-                  Añadir Pago con: <span className="text-primary">{selectedMethod.text}</span>
-                </h4>
+            {/* CAMBIO CLAVE 2: Usamos 'h-[calc(100vh-140px)]' para darle una altura exacta (h-screen - header - footer). */}
+            <div className="grid grid-cols-1 xl:grid-cols-12 p-2 gap-2 h-[calc(100vh-190px)]">
                 
-                {selectedMethod.nombre.toLowerCase() === "efectivo" ? (
-                  /* Cash Payment Interface */
-                  <div className="space-y-6">
-                    {/* Payment Mode Tabs (Compactos) */}
-                    <div className="flex gap-3">
-                      <Button variant={paymentMode === "quick" ? "default" : "secondary"} onClick={() => setPaymentMode("quick")} className="flex-1 gap-2 h-10 text-sm"><Calculator className="h-3 w-3" /> Rápido</Button>
-                      <Button variant={paymentMode === "bills" ? "default" : "secondary"} onClick={() => setPaymentMode("bills")} className="flex-1 gap-2 h-10 text-sm"><Coins className="h-3 w-3" /> Billetes</Button>
-                      <Button variant={paymentMode === "manual" ? "default" : "secondary"} onClick={() => setPaymentMode("manual")} className="flex-1 gap-2 h-10 text-sm"><DollarSign className="h-3 w-3" /> Manual</Button>
+                {/* CAMBIO CLAVE 3: RESTAURAMOS 'h-full' y 'overflow-y-auto' a las columnas */}
+                <div className="xl:col-span-3 space-y-4 h-full overflow-y-auto p-0">
+                    
+                    {/* 🔹 Detalles de Facturación */}
+                    <Card className="p-3 border border-[#202a46] bg-[#161b2e] shadow-sm">
+                        <h3 className="font-semibold text-sm mb-2 text-primary">Facturación</h3>
+                        <div className="space-y-2 text-xs">
+                            <div>
+                                <Label htmlFor="resolution" className="text-[11px] text-muted-foreground">Resolución *</Label>
+                                <Select
+                                    value={selectedResolution}
+                                    onValueChange={setSelectedResolution}
+                                    disabled={loading}
+                                >
+                                    <SelectTrigger className="h-7 mt-0.5 text-xs bg-[#1d2440] border border-[#2b355d]">
+                                        <SelectValue placeholder="Seleccionar" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {resolutions.map((r) => (
+                                            <SelectItem key={r.id} value={r.id.toString()}>
+                                                {r.text}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div>
+                                <Label htmlFor="invoice" className="text-[11px] text-muted-foreground">No. Factura *</Label>
+                                <Input
+                                    id="invoice"
+                                    value={getCurrentInvoiceNumber()}
+                                    readOnly
+                                    className="h-7 mt-0.5 bg-[#1d2440] text-primary font-semibold text-xs border border-[#2b355d] font-mono"
+                                />
+                            </div>
+                        </div>
+                    </Card>
+
+                    {/* 🔹 Resumen del Pedido */}
+                    <Card className="p-3 border border-[#202a46] bg-[#161b2e] shadow-sm">
+                        <h3 className="font-semibold text-sm mb-2 text-primary">Resumen</h3>
+                        <div className="space-y-1.5 text-xs">
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Subtotal:</span>
+                                <span>{formatPrice(order.subtotal)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">IVA (19%):</span>
+                                <span>{formatPrice(order.iva)}</span>
+                            </div>
+                            <Separator className="my-1 bg-border/40" />
+                            <div className="flex justify-between items-center border-t border-dashed border-border pt-1">
+                                <span className="font-semibold text-foreground text-xs">Total</span>
+                                <span className="text-primary font-bold text-sm">{formatPrice(order.total)}</span>
+                            </div>
+                        </div>
+                    </Card>
+                    
+                    {/* Error Message */}
+                    {error && (
+                        <div className="bg-destructive/10 border border-destructive/50 text-destructive p-3 rounded-lg text-sm shadow-sm">
+                            ❌ **Error:** {error}
+                        </div>
+                    )}
+                    
+                </div>
+
+                {/* CAMBIO CLAVE 3: RESTAURAMOS 'h-full' y 'overflow-y-auto' a las columnas */}
+                <div className="xl:col-span-6 space-y-2 h-full overflow-y-auto p-0">
+                  {/* Métodos de Pago */}
+                  <Card className="p-3 shadow-sm border border-[#222c4a] bg-[#161b2e]">
+                    <h3 className="font-semibold text-sm mb-2 text-primary border-b border-[#222c4a] pb-1">
+                      Métodos de Pago
+                    </h3>
+
+                    <div className="grid grid-cols-4 md:grid-cols-6 gap-2">
+                      {loading ? (
+                        [...Array(6)].map((_, i) => (
+                          <div key={i} className="h-14 border rounded-md bg-[#2d3748] animate-pulse" />
+                        ))
+                      ) : (
+                        paymentMethods.map((method) => (
+                          <Button
+                            key={method.id}
+                            variant={selectedMethod?.id === method.id ? "default" : "outline"}
+                            onClick={() => setSelectedMethod(method)}
+                            className={`flex flex-col items-center justify-center h-14 p-1 text-[11px] font-semibold transition-all
+                              ${selectedMethod?.id === method.id
+                                ? "bg-primary/90 ring-1 ring-primary/50 shadow-md"
+                                : "hover:bg-[#2d3748] border-[#2d3748]"
+                              }`}
+                          >
+                            {getPaymentIcon(method.nombre)}
+                            <span className="truncate w-full">{method.text}</span>
+                          </Button>
+                        ))
+                      )}
+                    </div>
+                  </Card>
+
+                  {/* Interfaz de Pago */}
+                  {selectedMethod && (
+                    <Card className="p-3 shadow-sm bg-[#161b2e]/80 border border-[#222c4a]">
+                      <h4 className="font-semibold text-sm mb-3 flex items-center gap-1 text-primary">
+                        <Coins className="h-4 w-4" />
+                        {selectedMethod.text}
+                      </h4>
+
+                      {/* Efectivo */}
+                      {selectedMethod.nombre.toLowerCase() === "efectivo" ? (
+                        <div className="space-y-3">
+                          {/* Tabs */}
+                          <div className="flex gap-1.5">
+                            {[
+                              { mode: "quick", icon: Calculator, label: "Rápido" },
+                              { mode: "bills", icon: Coins, label: "Billetes" },
+                              { mode: "manual", icon: DollarSign, label: "Manual" },
+                            ].map(({ mode, icon: Icon, label }) => (
+                              <Button
+                                key={mode}
+                                variant={paymentMode === mode ? "default" : "secondary"}
+                                onClick={() => setPaymentMode(mode  as "quick" | "bills" | "manual")}
+                                className="flex-1 gap-1 h-8 text-[11px] font-medium"
+                              >
+                                <Icon className="h-3 w-3" /> {label}
+                              </Button>
+                            ))}
+                          </div>
+
+                          <Separator className="bg-[#1b2641]" />
+
+                          {/* Modo rápido */}
+                          {paymentMode === "quick" && (
+                            <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
+                              <Button
+                                onClick={() => handleQuickPayment(amountToPayQuick)}
+                                disabled={remaining <= 0}
+                                className="h-10 bg-success hover:bg-success/90 text-white text-xs font-bold shadow"
+                              >
+                                Exacto ({formatPrice(amountToPayQuick)})
+                              </Button>
+                              {[20000, 50000, 100000].map((amount) => (
+                                <Button
+                                  key={amount}
+                                  onClick={() => handleQuickPayment(amount)}
+                                  variant="outline"
+                                  className="h-10 text-xs border-[#2d3748] hover:border-primary"
+                                >
+                                  {formatPrice(amount)}
+                                </Button>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Billetes */}
+                          {paymentMode === "bills" && (
+                            <div className="space-y-2">
+                              <div className="grid grid-cols-5 md:grid-cols-7 gap-1.5">
+                                {COLOMBIAN_BILLS.filter(b => b.common).map((bill) => (
+                                  <Button
+                                    key={bill.value}
+                                    onClick={() => handleBillSelect(bill.value)}
+                                    variant="outline"
+                                    className={`h-10 text-[11px] font-semibold p-1 border 
+                                      ${selectedBills[bill.value] ? "border-primary bg-primary/10" : ""}`}
+                                  >
+                                    {bill.label}
+                                    <span className="block text-[10px] text-muted-foreground font-mono">
+                                      ({selectedBills[bill.value] || 0})
+                                    </span>
+                                  </Button>
+                                ))}
+                              </div>
+
+                              <div className="bg-[#1d2440] rounded-md p-2 border border-[#222c4a]">
+                                <div className="flex justify-between text-xs mb-2">
+                                  <span className="font-semibold">Total:</span>
+                                  <span className="font-bold text-success text-sm">
+                                    {formatPrice(calculateTotalFromBills())}
+                                  </span>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button
+                                    onClick={addCashPaymentFromBills}
+                                    disabled={calculateTotalFromBills() <= 0}
+                                    className="flex-1 h-8 text-xs bg-primary hover:bg-primary/90"
+                                  >
+                                    Agregar
+                                  </Button>
+                                  <Button
+                                    onClick={() => setSelectedBills({})}
+                                    variant="outline"
+                                    className="h-8 text-xs text-destructive hover:border-destructive"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Manual */}
+                          {paymentMode === "manual" && (
+                            <div className="flex gap-2">
+                              <div className="relative flex-1">
+                                <Input
+                                  type="number"
+                                  value={currentInputAmount}
+                                  onChange={(e) => setCurrentInputAmount(e.target.value)}
+                                  placeholder="Monto"
+                                  className="h-8 text-xs pl-6 bg-[#1d2440] border-[#2d3748]"
+                                />
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-bold">$</span>
+                              </div>
+                              <Button
+                                onClick={handleManualAdd}
+                                disabled={!currentInputAmount || Number(currentInputAmount) <= 0}
+                                className="h-8 text-xs bg-primary hover:bg-primary/90"
+                              >
+                                <Plus className="h-3 w-3 mr-1" /> Agregar
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        /* Otros métodos */
+                        <div className="flex gap-2 p-2 border rounded-md bg-[#1d2440]/60 border-[#222c4a]">
+                          <div className="relative flex-1">
+                            <Input
+                              type="number"
+                              value={currentInputAmount}
+                              onChange={(e) => setCurrentInputAmount(e.target.value)}
+                              placeholder={`Monto ${selectedMethod?.text}`}
+                              className="h-8 text-xs pl-6 bg-[#1d2440] border-[#2d3748]"
+                            />
+                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-bold">$</span>
+                          </div>
+                          <Button
+                            onClick={handleManualAdd}
+                            disabled={!currentInputAmount || Number(currentInputAmount) <= 0}
+                            className="h-8 text-xs bg-primary hover:bg-primary/90"
+                          >
+                            <Plus className="h-3 w-3 mr-1" /> Agregar
+                          </Button>
+                        </div>
+                      )}
+                    </Card>
+                  )}
+                </div>
+
+                {/* CAMBIO CLAVE 3: RESTAURAMOS 'h-full' y 'overflow-y-auto' a las columnas */}
+                <div className="xl:col-span-3 space-y-4 h-full overflow-y-auto p-0">
+
+                  {/* Payment Status Card (Balance y Cambio) */}
+                  <Card className="p-4 shadow-lg border border-warning/40 bg-[#1e2538] text-warning-foreground rounded-2xl">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-bold text-lg tracking-wide text-warning flex items-center gap-2">
+                        <span className="h-2 w-2 bg-warning rounded-full animate-pulse" />
+                        Balance y Cambio
+                      </h3>
                     </div>
 
-                    <Separator className="bg-border" />
-
-                    {/* Quick Payment */}
-                    {paymentMode === "quick" && (
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <Button
-                          onClick={() => handleQuickPayment(amountToPayQuick)}
-                          disabled={remaining <= 0}
-                          className="h-14 bg-success hover:bg-success/90 text-success-foreground font-extrabold text-sm shadow-md transition-all"
-                        >
-                          Exacto<br />({formatPrice(amountToPayQuick)})
-                        </Button>
-                        {[20000, 50000, 100000].map((amount) => (
-                          <Button
-                            key={amount}
-                            onClick={() => handleQuickPayment(amount)}
-                            variant="outline"
-                            className="h-14 font-medium text-sm border-2 border-border hover:border-primary transition-colors"
-                          >
-                            {formatPrice(amount)}
-                          </Button>
-                        ))}
+                    <div className="space-y-2 text-sm font-medium">
+                      <div className="flex justify-between items-center">
+                        <span className="text-warning-foreground/70">Total Pagado</span>
+                        <span className="text-success font-extrabold text-base">{formatPrice(totalPaid)}</span>
                       </div>
-                    )}
 
-                    {/* Bill Selector */}
-                    {paymentMode === "bills" && (
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
-                          {COLOMBIAN_BILLS.filter(bill => bill.common).map((bill) => (
-                            <div key={bill.value} className="flex flex-col items-center gap-2">
-                              <Button
-                                onClick={() => handleBillSelect(bill.value)}
-                                variant="outline"
-                                className={`w-full h-14 flex flex-col items-center justify-center p-2 border ${selectedBills[bill.value] > 0 ? 'border-primary bg-primary/10' : ''}`}
-                              >
-                                <span className="text-sm font-bold">{bill.label}</span>
-                                <span className="text-xs text-muted-foreground font-mono">
-                                  ({selectedBills[bill.value] || 0})
+                      <Separator className="my-2 bg-warning/30" />
+
+                      <div className="flex justify-between items-center text-xl mt-2">
+                        <span className="font-extrabold uppercase tracking-wide">Faltante</span>
+                        <span className={`font-extrabold ${remaining > 0 ? 'text-destructive' : 'text-success'}`}>
+                          {formatPrice(Math.abs(remaining))}
+                        </span>
+                      </div>
+
+                      {change > 0 && (
+                        <div className="flex justify-between items-center text-sm pt-3 border-t border-dashed border-warning/40">
+                          <span className="text-info">Cambio</span>
+                          <span className="font-extrabold text-info text-base">{formatPrice(change)}</span>
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+
+                  {/* Payment List (Pagos Registrados) */}
+                  {payments.length > 0 && (
+                    <Card className="p-4 shadow-lg border border-[#2a3459] bg-[#151b29] rounded-2xl">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="font-bold text-base text-primary/80">Pagos Registrados</h4>
+                        <span className="text-xs text-muted-foreground bg-[#2d3748]/60 px-2 py-0.5 rounded-full">
+                          {payments.length}
+                        </span>
+                      </div>
+
+                      <div className="border border-[#232c47] rounded-lg overflow-hidden text-xs">
+                        {/* Header */}
+                        <div className="grid grid-cols-12 bg-[#222b45] p-2 border-b border-[#2a3459]">
+                          <div className="col-span-6 font-semibold text-muted-foreground">Método / Detalle</div>
+                          <div className="col-span-4 font-semibold text-right text-muted-foreground">Valor</div>
+                          <div className="col-span-2 font-semibold text-center text-muted-foreground">Acción</div>
+                        </div>
+
+                        {/* Rows */}
+                        <div className="divide-y divide-[#1e2538]">
+                          {payments.map((payment) => (
+                            <div
+                              key={payment.id}
+                              className="grid grid-cols-12 p-2 items-center hover:bg-[#2d3748]/40 transition-all"
+                            >
+                              <div className="col-span-6 flex flex-col sm:flex-row sm:items-center gap-2">
+                                {getPaymentIcon(payment.metodo.nombre)}
+                                <span className="font-medium text-foreground text-sm">
+                                  {payment.metodo.text}
                                 </span>
-                              </Button>
-                              {selectedBills[bill.value] > 0 && (
+
+                                {payment.billetes?.length && payment.billetes.length > 0 && (
+                                  <span className="text-[11px] text-muted-foreground bg-[#2d3748]/70 px-2 py-0.5 rounded-full truncate hidden md:inline-block">
+                                    💵 {payment.billetes.map(b => `${b.quantity}x${formatPrice(b.denomination)}`).join(", ")}
+                                  </span>
+                                )}
+                                
+                              </div>
+
+                              <div className="col-span-4 text-right font-bold text-success text-sm">
+                                {formatPrice(payment.valor)}
+                              </div>
+
+                              <div className="col-span-2 flex justify-center">
                                 <Button
-                                  onClick={() => handleBillRemove(bill.value)}
                                   variant="ghost"
-                                  size="sm"
-                                  className="h-6 w-full p-0 text-destructive hover:bg-destructive/10 text-xs gap-1"
+                                  size="icon"
+                                  onClick={() => removePayment(payment.id)}
+                                  className="h-7 w-7 text-destructive hover:text-destructive-foreground hover:bg-destructive/80 rounded-full transition-colors"
                                 >
-                                  <X className="h-3 w-3" />
+                                  <Trash2 className="h-4 w-4" />
                                 </Button>
-                              )}
+                              </div>
                             </div>
                           ))}
                         </div>
-
-                        <div className="bg-card rounded-lg p-4 border border-border shadow-inner">
-                          <div className="flex items-center justify-between mb-4">
-                            <span className="font-bold text-sm text-foreground">Total en billetes:</span>
-                            <span className="text-xl font-extrabold text-success">
-                              {formatPrice(calculateTotalFromBills())}
-                            </span>
-                          </div>
-                          <div className="flex gap-3">
-                            <Button
-                              onClick={addCashPaymentFromBills}
-                              disabled={calculateTotalFromBills() <= 0}
-                              className="flex-1 gap-2 h-11 text-base shadow-md bg-primary text-primary-foreground hover:bg-primary/90"
-                            >
-                              <Plus className="h-4 w-4" />
-                              Agregar Pago
-                            </Button>
-                            <Button
-                              onClick={() => setSelectedBills({})}
-                              variant="outline"
-                              className="gap-2 h-11 w-20 text-destructive hover:border-destructive"
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
                       </div>
-                    )}
-
-                    {/* Manual Amount */}
-                    {paymentMode === "manual" && (
-                      <div className="flex gap-3">
-                        <div className="relative flex-1">
-                          <Input
-                            type="number"
-                            value={currentInputAmount}
-                            onChange={(e) => setCurrentInputAmount(e.target.value)}
-                            placeholder="Monto en efectivo"
-                            className="flex-1 text-lg h-11 pl-10 border-input focus:border-primary bg-input"
-                          />
-                          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-md text-muted-foreground font-bold">$</span>
-                        </div>
-                        <Button
-                          onClick={handleManualAdd}
-                          disabled={!currentInputAmount || Number(currentInputAmount) <= 0}
-                          className="gap-2 px-6 h-11 text-base shadow-md bg-primary text-primary-foreground hover:bg-primary/90"
-                        >
-                          <Plus className="h-4 w-4" />
-                          Agregar
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-
-                ) : (
-                  /* Other Payment Methods (Manual Input) */
-                  <div className="flex gap-3 p-4 border rounded-lg bg-secondary/50 border-border">
-                    <div className="relative flex-1">
-                        <Input
-                          type="number"
-                          value={currentInputAmount}
-                          onChange={(e) => setCurrentInputAmount(e.target.value)}
-                          placeholder={`Monto en ${selectedMethod?.text}`}
-                          className="flex-1 text-lg h-11 pl-10 border-input focus:border-primary bg-input"
-                        />
-                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-md text-muted-foreground font-bold">$</span>
-                    </div>
-                    <Button
-                      onClick={handleManualAdd}
-                      disabled={!currentInputAmount || Number(currentInputAmount) <= 0}
-                      className="gap-2 px-6 h-11 text-base shadow-md bg-primary text-primary-foreground hover:bg-primary/90"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Agregar
-                    </Button>
-                  </div>
-                )}
-              </Card>
-            )}
-
-            {/* Payment List (Pagos Registrados) */}
-            {payments.length > 0 && (
-              <Card className="p-6 shadow-md border border-border">
-                <h4 className="font-bold text-lg mb-4 text-foreground">Pagos Registrados ({payments.length})</h4>
-                <div className="border border-border rounded-lg shadow-inner overflow-hidden">
-                  <div className="grid grid-cols-12 bg-muted p-4 border-b border-border">
-                    <div className="col-span-6 font-semibold text-xs text-muted-foreground">Método / Detalle</div>
-                    <div className="col-span-4 font-semibold text-xs text-right text-muted-foreground">Valor</div>
-                    <div className="col-span-2 font-semibold text-xs text-center text-muted-foreground">Acción</div>
-                  </div>
-                  <div className="divide-y divide-border">
-                    {payments.map((payment) => (
-                      <div key={payment.id} className="grid grid-cols-12 p-4 items-center hover:bg-secondary/10 transition-colors">
-                        <div className="col-span-6 flex items-start gap-2 flex-col sm:flex-row sm:items-center">
-                          {getPaymentIcon(payment.metodo.nombre)}
-                          <span className="font-semibold text-sm text-foreground">{payment.metodo.text}</span>
-                          {payment.billetes && payment.billetes.length > 0 && (
-                            <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full whitespace-nowrap overflow-hidden text-ellipsis max-w-full hidden md:block">
-                              💵 {payment.billetes.map(b => `${b.quantity}x${formatPrice(b.denomination)}`).join(", ")}
-                            </span>
-                          )}
-                        </div>
-                        <div className="col-span-4 text-right font-extrabold text-base text-success">
-                          {formatPrice(payment.valor)}
-                        </div>
-                        <div className="col-span-2 flex justify-center">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removePayment(payment.id)}
-                            className="h-8 w-8 text-destructive hover:text-destructive-foreground hover:bg-destructive/80 transition-colors rounded-full"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                    </Card>
+                  )}
                 </div>
-              </Card>
-            )}
 
-            {/* Error Message */}
-            {error && (
-              <div className="bg-destructive/10 border border-destructive/50 text-destructive p-4 rounded-lg text-sm shadow-sm">
-                ❌ **Error:** {error}
-              </div>
-            )}
+            </div>
             
-          </div>
-        </div>
-
-        {/* Action Buttons - Footer Fijo y Temático */}
-        <div className="p-6 border-t border-border bg-card/50 shadow-[0_-5px_10px_rgba(0,0,0,0.05)]">
-          <div className="flex gap-4 max-w-7xl mx-auto">
-            <Button 
-              variant="outline" 
-              onClick={onClose} 
-              className="flex-1 gap-2 h-12 text-base border-2 border-border text-foreground hover:bg-secondary transition-colors"
-              disabled={submitting}
-            >
-              <ArrowLeft className="h-5 w-5" />
-              Cancelar Venta
-            </Button>
-            <Button
-              onClick={handleCompletePayment}
-              disabled={remaining > 0 || payments.length === 0 || submitting}
-              className={`flex-1 gap-3 text-lg h-12 font-extrabold shadow-lg transition-all duration-300 
-                ${remaining > 0 
-                  ? 'bg-warning text-warning-foreground hover:bg-warning/90' 
-                  : 'bg-success text-success-foreground hover:bg-success/90'}`}
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  Procesando...
-                </>
-              ) : (
-                <>
-                  <CreditCard className="h-6 w-6" />
-                  {remaining > 0 ? `PAGAR ${formatPrice(remaining)} Faltante` : "Completar Venta"}
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
+            {/* Action Buttons - Footer Fijo y Temático (ALTO FIJO) */}
+            <div className="p-4 border-t border-[#1b2641] bg-[#1a2035] shadow-[0_-5px_15px_rgba(0,0,0,0.3)]">
+                <div className="flex gap-4 max-w-7xl mx-auto">
+                    <Button 
+                        variant="outline" 
+                        onClick={onClose} 
+                        className="flex-1 gap-2 h-12 text-base border-2 border-border text-foreground hover:bg-secondary transition-colors"
+                        disabled={submitting}
+                    >
+                        <ArrowLeft className="h-5 w-5" />
+                        Cancelar Venta
+                    </Button>
+                    <Button
+                        onClick={handleCompletePayment}
+                        disabled={remaining > 0 || payments.length === 0 || submitting}
+                        className={`flex-1 gap-3 text-lg h-12 font-extrabold shadow-lg transition-all duration-300 
+                            ${remaining > 0 
+                                ? 'bg-warning text-warning-foreground hover:bg-warning/90' 
+                                : 'bg-success text-success-foreground hover:bg-success/90'}`}
+                    >
+                        {submitting ? (
+                            <>
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                                Procesando...
+                            </>
+                        ) : (
+                            <>
+                                <CreditCard className="h-6 w-6" />
+                                {remaining > 0 ? `PAGAR ${formatPrice(remaining)} Faltante` : "Completar Venta"}
+                            </>
+                        )}
+                    </Button>
+                </div>
+            </div>
+        </DialogContent>
     </Dialog>
-  )
+  );
 }
