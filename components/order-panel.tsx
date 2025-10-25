@@ -132,7 +132,7 @@ export function OrderPanel({
     const handlePrintOrder = (orderId: number | null) => {
         // Reemplazar con su endpoint real de PDF
         if (orderId) {
-            const pdfUrl = `http://localhost:8000/pedido-print/${orderId}`;
+            const pdfUrl = `https://app.portafolioerp.com/pos/pedido-print/${orderId}`;
             window.open(pdfUrl, '_blank');
         }
     };

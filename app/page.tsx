@@ -418,16 +418,21 @@ function POSContent() {
 
 	const saveSaleToBackend = async (order: Order, paymentData: any): Promise<Order> => {
 		try {
-			paymentData.id_cliente = selectedCliente ? selectedCliente.id : null
-			
-			const response = await apiClient.post('/pos/venta', paymentData)
-			const backendId = response.data.data?.id 
-			
-			return { 
+			paymentData.id_cliente = selectedCliente ? selectedCliente.id : null;
+		
+			const response = await apiClient.post('/pos/venta', paymentData);
+
+			const idVenta = response.data?.impresion ?? null;
+			const idBackend = response.data?.id ?? null;
+
+			const updatedOrder: Order = {
 				...order,
-				id_backend: backendId || order.id_backend,
-				estado: "completado"
-			}
+				id_backend: idBackend,
+				id_venta: idVenta,
+				estado: "completado",
+			};
+
+			return updatedOrder;
 			
 		} catch (error: any) {
 			console.error('❌ Error guardando pedido:', error)
@@ -1040,20 +1045,33 @@ function POSContent() {
 			try {
 
 				const savedOrder = await saveSaleToBackend(currentOrder, paymentData)
-				// const completedOrder = { ...savedOrder, estado: "completado" as const }
-				// setOrders((prev) => prev.map((order) => (order.id === currentOrder.id ? completedOrder : order)))
+
+				const completedOrder = { ...savedOrder, estado: "completado" as const }
+				setOrders((prev) => prev.map((order) => (order.id === currentOrder.id ? completedOrder : order)))
 				
-				// const remainingOrders = orders.filter(o => o.id !== currentOrder.id && o.estado === 'pendiente')
-				// setCurrentOrder(remainingOrders.length > 0 ? remainingOrders[0] : null)
-				// setSelectedCliente(null)
-				// setShowPaymentModal(false)
+				const remainingOrders = orders.filter(o => o.id !== currentOrder.id && o.estado === 'pendiente')
+				setCurrentOrder(remainingOrders.length > 0 ? remainingOrders[0] : null)
+				setShowPaymentModal(false)
+
+				window.dispatchEvent(new CustomEvent('showToast', {
+					detail: { 
+						message: 'Venta creada con exito!',
+						type: 'success',
+						autoClose: true,
+						duration: 5000
+					}
+				}));
+
+				if (savedOrder.id_venta) {
+					const pdfUrl = `https://app.portafolioerp.com/pos/venta-print/${savedOrder.id_venta}`;
+					window.open(pdfUrl, '_blank');
+				}
+
 			} catch (error) {
 				console.error('Error procesando pedido:', error)
 			}
 		}
 	}
-	
-	// --- Verificación de autenticación ---
 
 	if (!isAuthenticated && !loading) {
 		return <LoginPage />
