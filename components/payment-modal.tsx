@@ -293,7 +293,7 @@ export function PaymentModal({ order, onPayment, onClose }: PaymentModalProps) {
         fecha_manual: new Date().toISOString().split("T")[0],
         id_resolucion: selectedResolution,
         id_vendedor: null,
-        id_pedido: Number.parseInt(order.id.replace("order-", "")),
+        id_pedido: order.id_backend,
         consecutivo: selectedResolutionData.consecutivo,
         observacion: `Venta ${order.ubicacion_nombre}`,
       }
