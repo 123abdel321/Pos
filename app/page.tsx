@@ -422,14 +422,22 @@ function POSContent() {
 		
 			const response = await apiClient.post('/pos/venta', paymentData);
 
-			const idVenta = response.data?.impresion ?? null;
-			const idBackend = response.data?.id ?? null;
+			if (response.data.success) {
+				const idVenta = response.data?.id_venta ?? null;
+				const idBackend = response.data?.id ?? null;
+
+				const updatedOrder: Order = {
+					...order,
+					id_backend: idBackend,
+					id_venta: idVenta,
+					estado: "completado",
+				};
+
+				return updatedOrder;
+			}
 
 			const updatedOrder: Order = {
-				...order,
-				id_backend: idBackend,
-				id_venta: idVenta,
-				estado: "completado",
+				...order
 			};
 
 			return updatedOrder;
@@ -1046,25 +1054,27 @@ function POSContent() {
 
 				const savedOrder = await saveSaleToBackend(currentOrder, paymentData)
 
-				const completedOrder = { ...savedOrder, estado: "completado" as const }
-				setOrders((prev) => prev.map((order) => (order.id === currentOrder.id ? completedOrder : order)))
-				
-				const remainingOrders = orders.filter(o => o.id !== currentOrder.id && o.estado === 'pendiente')
-				setCurrentOrder(remainingOrders.length > 0 ? remainingOrders[0] : null)
-				setShowPaymentModal(false)
-
-				window.dispatchEvent(new CustomEvent('showToast', {
-					detail: { 
-						message: 'Venta creada con exito!',
-						type: 'success',
-						autoClose: true,
-						duration: 5000
-					}
-				}));
-
 				if (savedOrder.id_venta) {
-					const pdfUrl = `https://app.portafolioerp.com/pos/venta-print/${savedOrder.id_venta}`;
-					window.open(pdfUrl, '_blank');
+					const completedOrder = { ...savedOrder, estado: "completado" as const }
+					setOrders((prev) => prev.map((order) => (order.id === currentOrder.id ? completedOrder : order)))
+					
+					const remainingOrders = orders.filter(o => o.id !== currentOrder.id && o.estado === 'pendiente')
+					setCurrentOrder(remainingOrders.length > 0 ? remainingOrders[0] : null)
+					setShowPaymentModal(false)
+	
+					window.dispatchEvent(new CustomEvent('showToast', {
+						detail: { 
+							message: 'Venta creada con exito!',
+							type: 'success',
+							autoClose: true,
+							duration: 5000
+						}
+					}));
+	
+					if (savedOrder.id_venta) {
+						const pdfUrl = `https://app.portafolioerp.com/pos/venta-print/${savedOrder.id_venta}`;
+						window.open(pdfUrl, '_blank');
+					}
 				}
 
 			} catch (error) {

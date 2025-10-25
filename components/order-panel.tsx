@@ -478,46 +478,50 @@ export function OrderPanel({
                                                             </div>
                                                         )}
                                                     </div>
-                                                    <div className="flex gap-1">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-5 w-5 p-0 text-blue-600 hover:text-blue-700"
-                                                            onClick={() => handleEditProduct(item)}
-                                                        >
-                                                            <Edit className="h-3 w-3" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-5 w-5 p-0 text-destructive hover:text-destructive"
-                                                            onClick={() => onRemoveProduct(item.id_producto)}
-                                                        >
-                                                            <Trash2 className="h-3 w-3" />
-                                                        </Button>
-                                                    </div>
+                                                    { currentOrder.estado == 'pendiente' ? 
+                                                        <div className="flex gap-1">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-5 w-5 p-0 text-blue-600 hover:text-blue-700"
+                                                                onClick={() => handleEditProduct(item)}
+                                                            >
+                                                                <Edit className="h-3 w-3" />
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-5 w-5 p-0 text-destructive hover:text-destructive"
+                                                                onClick={() => onRemoveProduct(item.id_producto)}
+                                                            >
+                                                                <Trash2 className="h-3 w-3" />
+                                                            </Button>
+                                                        </div> : ''
+                                                    }
                                                 </div>
 
                                                 <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-1">
-                                                        <Button
-                                                            variant="outline"
-                                                            size="icon"
-                                                            className="h-5 w-5 p-0 bg-transparent hover:bg-red-50"
-                                                            onClick={() => onUpdateQuantity(item.id_producto, item.cantidad - 1)}
-                                                        >
-                                                            <Minus className="h-3 w-3 text-destructive" />
-                                                        </Button>
-                                                        <span className="text-xs font-medium w-6 text-center">{item.cantidad}</span>
-                                                        <Button
-                                                            variant="outline"
-                                                            size="icon"
-                                                            className="h-5 w-5 p-0 bg-transparent hover:bg-green-50"
-                                                            onClick={() => onUpdateQuantity(item.id_producto, item.cantidad + 1)}
-                                                        >
-                                                            <Plus className="h-3 w-3 text-success" />
-                                                        </Button>
-                                                    </div>
+                                                    { currentOrder.estado == 'pendiente' ? 
+                                                        <div className="flex items-center gap-1">
+                                                            <Button
+                                                                variant="outline"
+                                                                size="icon"
+                                                                className="h-5 w-5 p-0 bg-transparent hover:bg-red-50"
+                                                                onClick={() => onUpdateQuantity(item.id_producto, item.cantidad - 1)}
+                                                            >
+                                                                <Minus className="h-3 w-3 text-destructive" />
+                                                            </Button>
+                                                            <span className="text-xs font-medium w-6 text-center">{item.cantidad}</span>
+                                                            <Button
+                                                                variant="outline"
+                                                                size="icon"
+                                                                className="h-5 w-5 p-0 bg-transparent hover:bg-green-50"
+                                                                onClick={() => onUpdateQuantity(item.id_producto, item.cantidad + 1)}
+                                                            >
+                                                                <Plus className="h-3 w-3 text-success" />
+                                                            </Button>
+                                                        </div> : ''
+                                                    }
                                                     <div className="text-xs font-semibold">{formatPrice(item.total)}</div>
                                                 </div>
                                             </Card>
@@ -564,42 +568,48 @@ export function OrderPanel({
                             </div>
 
                             <div className="space-y-1 mb-17">
-                                <Button
-                                    onClick={onCompleteOrder}
-                                    disabled={currentOrder.productos.length === 0}
-                                    className="w-full gap-1 btn-bg-gold h-9"
-                                >
-                                    <CreditCard className="h-4 w-4" />
-                                    Pagar ({formatPrice(currentOrder.total)})
-                                </Button>
+                                { currentOrder.estado == 'pendiente' ?
+                                    <>
+                                    <Button
+                                        onClick={onCompleteOrder}
+                                        disabled={currentOrder.productos.length === 0}
+                                        className="w-full gap-1 btn-bg-gold h-9"
+                                    >
+                                        <CreditCard className="h-4 w-4" />
+                                        Pagar ({formatPrice(currentOrder.total)})
+                                    </Button>
 
-                                <div className="flex gap-2">
-                                    <Button
-                                        onClick={() => handlePrintOrder(currentOrder.id_backend)}
-                                        disabled={!currentOrder.id_backend}
-                                        variant="outline"
-                                        className="w-1/3 gap-1 h-8"
-                                        title="Imprimir pedido"
-                                    >
-                                        <Printer className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        onClick={onNewOrder}
-                                        className="w-1/2 gap-1 h-8"
-                                    >
-                                        <Plus className="h-4 w-4" />
-                                        Nuevo
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        onClick={onCancelOrder}
-                                        className="w-1/2 gap-1 h-8 text-destructive hover:text-destructive"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                        Cancelar
-                                    </Button>
-                                </div>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            onClick={() => handlePrintOrder(currentOrder.id_backend)}
+                                            disabled={!currentOrder.id_backend}
+                                            variant="outline"
+                                            className="w-1/3 gap-1 h-8"
+                                            title="Imprimir pedido"
+                                        >
+                                            <Printer className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            onClick={onNewOrder}
+                                            className="w-1/2 gap-1 h-8"
+                                        >
+                                            <Plus className="h-4 w-4" />
+                                            Nuevo
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            onClick={onCancelOrder}
+                                            className="w-1/2 gap-1 h-8 text-destructive hover:text-destructive"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                            Cancelar
+                                        </Button>
+                                    </div>
+                                    </>
+                                    : ''
+                                }
+
                             </div>
                         </div>
                     </div>
