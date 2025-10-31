@@ -24,6 +24,7 @@ interface OrdersManagerPanelProps {
 	currentOrder: Order | null
 	onSelectOrder: (order: Order) => void
 	onNewOrder: () => void
+	loadingOrderId?: string | null
 }
 
 export function OrdersManagerPanel({
@@ -31,6 +32,7 @@ export function OrdersManagerPanel({
 	currentOrder,
 	onSelectOrder,
 	onNewOrder,
+	loadingOrderId,
 }: OrdersManagerPanelProps) {
 	// Estado local para manejar si el panel está expandido o colapsado
 	const [isExpanded, setIsExpanded] = useState(false)
@@ -58,6 +60,7 @@ export function OrdersManagerPanel({
 	// Renderiza un solo item de la lista de pedidos
 	const renderOrderItem = (order: Order) => {
 		const isCurrent = currentOrder?.id === order.id
+		const isLoading = loadingOrderId === order.id // Verifica si este pedido está cargando
 		
 		if (!isExpanded) {
 			// Vista Colapsada (solo icono y ID de backend)
@@ -66,10 +69,15 @@ export function OrdersManagerPanel({
 					key={order.id}
 					variant={isCurrent ? "default" : "outline"}
 					size="icon"
-					onClick={() => onSelectOrder(order)}
-					className={`w-10 h-10 mb-2 relative ${isCurrent ? 'bg-primary hover:bg-primary/90' : 'hover:bg-accent'}`}
+					onClick={() => !isLoading && onSelectOrder(order)} // Evita clicks mientras carga
+					disabled={isLoading} // Deshabilita el botón mientras carga
+					className={`w-10 h-10 mb-2 relative ${isCurrent ? 'bg-primary hover:bg-primary/90' : 'hover:bg-accent'} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
 				>
-					<ListOrdered className="h-4 w-4" />
+					{isLoading ? (
+						<div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+					) : (
+						<ListOrdered className="h-4 w-4" />
+					)}
 					{order.id_backend && (
 						<Badge 
 							className={`absolute -top-1 -right-1 h-3 min-w-3 p-0 text-[8px] font-bold justify-center ${isCurrent ? 'bg-yellow-400 text-black' : 'bg-primary-foreground text-primary'}`}
@@ -85,15 +93,23 @@ export function OrdersManagerPanel({
 		return (
 			<Card
 				key={order.id}
-				onClick={() => onSelectOrder(order)}
+				onClick={() => !isLoading && onSelectOrder(order)} // Evita clicks mientras carga
 				className={`
-					p-3 cursor-pointer transition-all mb-2 
+					p-3 cursor-pointer transition-all mb-2 relative
 					${isCurrent 
-						? "border-2 border-primary bg-primary/5 shadow-md" // Estilo más fuerte para la selección
-						: "hover:bg-accent/50 border border-transparent" // Border más sutil para el hover
+						? "border-2 border-primary bg-primary/5 shadow-md" 
+						: "hover:bg-accent/50 border border-transparent"
 					}
+					${isLoading ? 'opacity-50 cursor-wait pointer-events-none' : ''}
 				`}
 			>
+				{/* Loading overlay */}
+				{isLoading && (
+					<div className="absolute inset-0 bg-background/50 flex items-center justify-center rounded-md">
+						<div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+					</div>
+				)}
+				
 				{/* --- CABECERA: ID, TIEMPO y TOTAL --- */}
 				<div className="flex items-start justify-between">
 					
@@ -101,9 +117,13 @@ export function OrdersManagerPanel({
 					<div className="flex items-center gap-2">
 						
 						{/* Icono de Orden */}
-						<ListOrdered 
-							className={`h-4 w-4 ${isCurrent ? 'text-primary' : 'text-muted-foreground'}`} 
-						/>
+						{isLoading ? (
+							<div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+						) : (
+							<ListOrdered 
+								className={`h-4 w-4 ${isCurrent ? 'text-primary' : 'text-muted-foreground'}`} 
+							/>
+						)}
 						
 						<div className="space-y-0.5">
 							
@@ -117,7 +137,7 @@ export function OrdersManagerPanel({
 							) : (
 								<Badge 
 									variant="secondary" 
-									className="text-[10px] px-1.5 py-0 h-4 font-mono tracking-wider" // Fuente mono para ID temporal
+									className="text-[10px] px-1.5 py-0 h-4 font-mono tracking-wider"
 								>
 									TEMP: {order.id.replace('order-', '').slice(-6)}
 								</Badge>
@@ -142,7 +162,6 @@ export function OrdersManagerPanel({
 					</div>
 				</div>
 
-				{/* --- SEPARADOR (opcional, podrías quitarlo si quieres más compacto) --- */}
 				<Separator className="my-2" />
 
 				{/* --- PIE DE PÁGINA: CLIENTE y UBICACIÓN --- */}
@@ -156,7 +175,6 @@ export function OrdersManagerPanel({
 								className="truncate font-medium" 
 								title={`${order.cliente.numero_documento} - ${order.cliente.nombre_completo}`}
 							>
-								{/* Muestra solo el nombre y documento es el identificador en el title */}
 								{order.cliente.nombre_completo} 
 							</span>
 							<span className="text-muted-foreground text-[10px] flex-shrink-0">

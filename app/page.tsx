@@ -166,6 +166,7 @@ function POSContent() {
 	const [showOrdersTable, setShowOrdersTable] = useState(false)
 	const [showPaymentModal, setShowPaymentModal] = useState(false) 
 	const [currentOrder, setCurrentOrder] = useState<Order | null>(null)
+	const [loadingOrderId, setLoadingOrderId] = useState<string | null>(null)
 	const [selectedBodega, setSelectedBodega] = useState<Bodega | null>(null)
 	const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null)
 	const [selectedLocation, setSelectedLocation] = useState<Ubicacion | null>(null);
@@ -367,6 +368,78 @@ function POSContent() {
 			estado: backendOrder.estado === 1 ? "pendiente" : "completado",
 		};
 	}, []);
+
+	const mapSingleBackendOrderToFrontend = useCallback((backendOrder: BackendPedido): Order => {
+        const frontendItems: OrderItem[] = (backendOrder.detalles || []).map((detalle: any, index: number): OrderItem => {
+            const subtotalNum = Number.parseFloat(detalle.subtotal || '0');
+            const ivaValorNum = Number.parseFloat(detalle.iva_valor || '0');
+            const totalNum = Number.parseFloat(detalle.total || '0');
+            const retencionValorNum = Number.parseFloat(detalle.retencion_valor || '0');
+            const retencionPorcentajeNum = Number.parseFloat(detalle.retencion_porcentaje || '0');
+            
+            return {
+                consecutivo: index + 1,
+                id_producto: detalle.id_producto,
+                nombre: detalle.descripcion,
+                cantidad: Number.parseFloat(detalle.cantidad || '0'),
+                costo: Number.parseFloat(detalle.costo || '0'),
+                subtotal: subtotalNum,
+                descuento_porcentaje: Number.parseFloat(detalle.descuento_porcentaje || '0'),
+                descuento_valor: Number.parseFloat(detalle.descuento_valor || '0'),
+                iva_porcentaje: Number.parseFloat(detalle.iva_porcentaje || '0'),
+                iva_valor: ivaValorNum,
+                retencion_porcentaje: retencionPorcentajeNum,
+                retencion_valor: retencionValorNum,
+                total: totalNum,
+                concepto: "",
+            }
+        });
+
+        // Cálculos simplificados para un solo pedido
+        const totalIva = frontendItems.reduce((sum, item) => sum + item.iva_valor, 0);
+        const totalDescuento = frontendItems.reduce((sum, item) => sum + item.descuento_valor, 0);
+        const valorBruto = frontendItems.reduce((sum, item) => 
+            sum + (item.cantidad * item.costo) - item.descuento_valor, 0
+        );
+
+        // 🔥 CALCULAR IVA AGRUPADO POR TASA
+        const ivaPorTasas = backendOrder.detalles.reduce((acc, item) => {
+            const tasa = item.iva_porcentaje;
+
+            if (tasa === 0) {
+                return acc;
+            }
+
+            if (!acc[tasa]) {
+                acc[tasa] = 0;
+            }
+
+            acc[tasa] += item.iva_valor;
+            return acc;
+        }, {} as { [key: number]: number });
+
+        return {
+            id: `order-${backendOrder.id}`, 
+            id_backend: backendOrder.id, 
+            id_ubicacion: backendOrder.id_ubicacion,
+            id_bodega: backendOrder.id_bodega,
+            id_venta: backendOrder.id_venta,
+            id_cliente: backendOrder.id_cliente,
+            cliente: backendOrder.cliente,
+            bodega: backendOrder.bodega,
+            ubicacion: backendOrder.ubicacion,
+            ubicacion_nombre: backendOrder.cliente?.nombre_completo.trim() || "Pedido Mostrador", 
+            productos: frontendItems,
+            subtotal: Number.parseFloat(backendOrder.subtotal),
+            iva: totalIva,
+            retencion: Number.parseFloat(backendOrder.total_rete_fuente),
+            porcentaje_retencion: Number.parseFloat(backendOrder.porcentaje_rete_fuente),
+            total: valorBruto,
+            fecha: backendOrder.created_at,
+            iva_desglose: ivaPorTasas,
+            estado: backendOrder.estado === 1 ? "pendiente" : "completado",
+        };
+    }, []);
 	
 	// Función para guardar en el backend
 	const saveOrderToBackend = async (
@@ -581,76 +654,91 @@ function POSContent() {
 
 	// --- FUNCIONES DE MANEJO DE ORDENES ---
 
-	const selectOrder = (order: Order) => {
+	const selectOrder = async (order: Order, findInBakend = true) => {
+
+		setLoadingOrderId(order.id)
 		
-		const orderBodega = order.bodega;
-		const orderCliente = order.cliente;
-		const orderUbicacion = order.ubicacion;
-
-		if (orderBodega) {
-			const dataBodega = {
-				id: orderBodega ? orderBodega.id : null,
-				codigo: orderBodega ? orderBodega.codigo : null,
-				nombre: orderBodega ? orderBodega.nombre : null,
-				ubicacion: orderBodega ? orderBodega.ubicacion : null,
-				id_centro_costos: orderBodega ? orderBodega.id_centro_costos : null,
-				id_responsable: orderBodega ? orderBodega.id_responsable : null,
-				id_cuenta_cartera: orderBodega ? orderBodega.id_cuenta_cartera : null,
-				consecutivo: orderBodega ? orderBodega.consecutivo : null,
-				consecutivo_parqueadero: orderBodega ? orderBodega.consecutivo_parqueadero : null,
-				created_by: orderBodega ? orderBodega.created_by : null,
-				updated_by: orderBodega ? orderBodega.updated_by : null,
-				created_at: orderBodega ? orderBodega.created_at : null,
-				updated_at: orderBodega ? orderBodega.updated_at : null,
-				text: orderBodega ? orderBodega.codigo+' - '+orderBodega.nombre : null,
+		try {
+			var orderResponse = null
+			if (findInBakend) {
+				const response = await apiClient.get(`/pos/pedidos/${order.id_backend}`);
+				orderResponse = response.data.data
 			}
-			setSelectedBodega(dataBodega)
-		} else {
-			setSelectedBodega(null)
-		}
+		
+			const orderBodega = orderResponse ? orderResponse.bodega : order.bodega;
+			const orderCliente = orderResponse ? orderResponse.cliente : order.cliente;
+			const orderUbicacion = orderResponse ? orderResponse.ubicacion : order.ubicacion;
 
-		if (orderCliente) {
-			const dataCliente = {
-				id: orderCliente.id,
-				id_tipo_documento: orderCliente.id_tipo_documento,
-				id_ciudad: orderCliente.id_ciudad,
-				primer_nombre: orderCliente.primer_nombre,
-				segundo_nombre: orderCliente.segundo_nombre,
-				primer_apellido: orderCliente.primer_apellido,
-				segundo_apellido: orderCliente.segundo_apellido,
-				email: orderCliente.email,
-				sumar_aiu: orderCliente.sumar_aiu,
-				porcentaje_aiu: orderCliente.porcentaje_aiu,
-				porcentaje_reteica: orderCliente.porcentaje_reteica,
-				apartamentos: orderCliente.apartamentos,
-				id_responsabilidades: orderCliente.id_responsabilidades,
-				telefono: orderCliente.telefono,
-				text: orderCliente.text,
-				nombre_completo: orderCliente.nombre_completo
-			}
-			setSelectedCliente(dataCliente)
-		} else {
-			setSelectedCliente(null)
-		}
-
-		if (orderUbicacion) {
-			const pedidoUbi = orderUbicacion.pedido;
-			const dataUbicacion = {
-				id: orderUbicacion.id,
-				nombre: orderUbicacion.nombre,
-				text: orderUbicacion.nombre+' - '+orderUbicacion.codigo,
-				codigo: orderUbicacion.codigo,
-				pedido: {
-					id: pedidoUbi ? pedidoUbi.id : null,
-					id_venta: pedidoUbi ? pedidoUbi.id_venta : null
+			if (orderBodega) {
+				const dataBodega = {
+					id: orderBodega ? orderBodega.id : null,
+					codigo: orderBodega ? orderBodega.codigo : null,
+					nombre: orderBodega ? orderBodega.nombre : null,
+					ubicacion: orderBodega ? orderBodega.ubicacion : null,
+					id_centro_costos: orderBodega ? orderBodega.id_centro_costos : null,
+					id_responsable: orderBodega ? orderBodega.id_responsable : null,
+					id_cuenta_cartera: orderBodega ? orderBodega.id_cuenta_cartera : null,
+					consecutivo: orderBodega ? orderBodega.consecutivo : null,
+					consecutivo_parqueadero: orderBodega ? orderBodega.consecutivo_parqueadero : null,
+					created_by: orderBodega ? orderBodega.created_by : null,
+					updated_by: orderBodega ? orderBodega.updated_by : null,
+					created_at: orderBodega ? orderBodega.created_at : null,
+					updated_at: orderBodega ? orderBodega.updated_at : null,
+					text: orderBodega ? orderBodega.codigo+' - '+orderBodega.nombre : null,
 				}
+				setSelectedBodega(dataBodega)
+			} else {
+				setSelectedBodega(null)
 			}
-			setSelectedLocation(dataUbicacion)
-		} else {
-			setSelectedLocation(null)
-		}
-		
-		setCurrentOrder(order)
+
+			if (orderCliente) {
+				const dataCliente = {
+					id: orderCliente.id,
+					id_tipo_documento: orderCliente.id_tipo_documento,
+					id_ciudad: orderCliente.id_ciudad,
+					primer_nombre: orderCliente.primer_nombre,
+					segundo_nombre: orderCliente.segundo_nombre,
+					primer_apellido: orderCliente.primer_apellido,
+					segundo_apellido: orderCliente.segundo_apellido,
+					email: orderCliente.email,
+					sumar_aiu: orderCliente.sumar_aiu,
+					porcentaje_aiu: orderCliente.porcentaje_aiu,
+					porcentaje_reteica: orderCliente.porcentaje_reteica,
+					apartamentos: orderCliente.apartamentos,
+					id_responsabilidades: orderCliente.id_responsabilidades,
+					telefono: orderCliente.telefono,
+					text: orderCliente.text,
+					nombre_completo: orderCliente.nombre_completo
+				}
+				setSelectedCliente(dataCliente)
+			} else {
+				setSelectedCliente(null)
+			}
+
+			if (orderUbicacion) {
+				const pedidoUbi = orderUbicacion.pedido;
+				const dataUbicacion = {
+					id: orderUbicacion.id,
+					nombre: orderUbicacion.nombre,
+					text: orderUbicacion.nombre+' - '+orderUbicacion.codigo,
+					codigo: orderUbicacion.codigo,
+					pedido: {
+						id: pedidoUbi ? pedidoUbi.id : null,
+						id_venta: pedidoUbi ? pedidoUbi.id_venta : null
+					}
+				}
+				setSelectedLocation(dataUbicacion)
+			} else {
+				setSelectedLocation(null)
+			}
+			
+			setCurrentOrder(order)
+
+		} catch (error) {
+			console.error('Error al cargar el pedido:', error)
+		} finally {
+			setLoadingOrderId(null)
+		}		
 	}
 
 	const createNewOrder = async (ubicacion: Ubicacion | null = null) => {
@@ -985,6 +1073,16 @@ function POSContent() {
 			return;
 		}
 
+		const response = await apiClient.get(`/pos/pedidos/ubicacion/${ubicacion.id}`);
+		const backendOrders: BackendPedido = response.data.data || null;
+
+		if (backendOrders) {
+			const frontendOrder = mapSingleBackendOrderToFrontend(backendOrders);
+			setSelectedLocation(ubicacion);
+			selectOrder(frontendOrder, false)
+			return;
+		}
+
 		//BUSCAR PEDIDO PENDIENTE
 		const pedidoOcupandoUbicacion = orders.find(
 			order => order.id_ubicacion === ubicacion.id && order.estado === 'pendiente' 
@@ -1178,6 +1276,7 @@ function POSContent() {
 					currentOrder={currentOrder}
 					onSelectOrder={selectOrder}
 					onNewOrder={() => createNewOrder()}
+					loadingOrderId={loadingOrderId}
 				/>
 
 				<div className="flex-1 flex flex-col overflow-hidden">

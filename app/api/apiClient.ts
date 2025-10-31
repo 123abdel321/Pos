@@ -27,43 +27,62 @@ apiClient.interceptors.response.use(
   (error) => {
     if (typeof window !== "undefined") {
       const errorData = error.response?.data
-      console.log('error: ',error);
       if (errorData) {
         let errorMessage = ''
         
-        // Formatear el mensaje de error
-        if (typeof errorData.message === 'object') {
-          for (const field in errorData.message) {
-            const errores = errorData.message[field]
-            if (Array.isArray(errores)) {
-              errores.forEach((error: string) => {
-                errorMessage += `${field}: ${error}\n`
-              })
+        // Función recursiva para extraer mensajes de error
+        const extractErrorMessages = (obj: any, prefix: string = ''): void => {
+          for (const key in obj) {
+            if (obj.hasOwnProperty(key)) {
+              const value = obj[key];
+              const currentPath = prefix ? `${prefix}` : key;
+              
+              if (typeof value === 'string') {
+                // Es un mensaje de error final
+                errorMessage += `${currentPath}: ${value}\n`;
+              } else if (Array.isArray(value)) {
+                // Es un array de errores
+                value.forEach((error: string) => {
+                  errorMessage += `${currentPath}: ${error}\n`;
+                });
+              } else if (typeof value === 'object' && value !== null) {
+                // Es un objeto anidado, llamar recursivamente
+                extractErrorMessages(value, currentPath);
+              }
             }
           }
-        } else if (typeof errorData.message === 'string') {
-          errorMessage = errorData.message
         }
         
+        // Formatear el mensaje de error
+        if (typeof errorData.message === 'object') {
+          extractErrorMessages(errorData.message);
+        } else if (typeof errorData.message === 'string') {
+          errorMessage = errorData.message;
+        }
+        
+        console.log('errorMessage: ', errorMessage);
+        
         // Disparar evento con tipo de error
-        window.dispatchEvent(new CustomEvent('showError', {
-          detail: { 
-            message: errorMessage,
-            type: 'error', // Puedes cambiar esto según el status code
-            autoClose: true,
-            duration: 5000
-          }
-        }))
+        if (errorMessage) {
+          window.dispatchEvent(new CustomEvent('showError', {
+            detail: { 
+              message: errorMessage,
+              type: 'error',
+              autoClose: true,
+              duration: 5000
+            }
+          }));
+        }
       }
       
       if (error.response?.status === 401) {
-        localStorage.removeItem('authToken')
-        window.location.href = '/login'
+        localStorage.removeItem('authToken');
+        window.location.href = '/login';
       }
     }
     
-    return Promise.reject(error)
+    return Promise.reject(error);
   }
-)
+);
 
 export default apiClient;
