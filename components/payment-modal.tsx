@@ -126,7 +126,7 @@ export function PaymentModal({ order, onPayment, onClose }: PaymentModalProps) {
         
         // Simulación de consumo de API (usando tu estructura original)
         const [paymentResponse, resolutionResponse] = await Promise.all([
-          apiClient.get('/forma-pago/combo-forma-pago'),
+          apiClient.get('/forma-pago/combo-forma-pago?type=ventas'),
           apiClient.get('/resoluciones/combo-resoluciones')
         ])
 
