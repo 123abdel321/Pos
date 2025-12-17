@@ -156,6 +156,8 @@ export interface BackendPedido {
 // Interfaz para la configuración de validación
 interface ValidationConfig {
 	iva_incluido: boolean
+	bodega: Bodega,
+	cliente: Cliente
 }
 
 function POSContent() {
@@ -173,6 +175,8 @@ function POSContent() {
 	// NUEVOS ESTADOS PARA LA CONFIGURACIÓN
 	const [topeRetencion, setTopeRetencion] = useState<number>(0)
 	const [ivaIncluido, setIvaIncluido] = useState<boolean>(false)
+	const [clienteDefecto, setClienteDefecto] = useState<Cliente | null>(null)
+	const [bodegaDefecto, setBodegaDefecto] = useState<Bodega | null>(null)
 	const [porcentajeRetencion, setPorcentajeRetencion] = useState<number>(0)
 	const [validationConfig, setValidationConfig] = useState<ValidationConfig | null>(null)
 	// MOSTRAR UBICACIONES ACTIVAS
@@ -193,6 +197,8 @@ function POSContent() {
 
 				setValidationConfig(config)
 				setIvaIncluido(estadoIvaInlucido || false)
+				setClienteDefecto(config.cliente)
+				setBodegaDefecto(config.bodega)
 
 			} catch (error) {
 				console.error('❌ Error cargando configuración:', error)
@@ -741,7 +747,7 @@ function POSContent() {
 		}		
 	}
 
-	const createNewOrder = async (ubicacion: Ubicacion | null = null) => {
+	const createNewOrder = async (ubicacion: Ubicacion | null = null, currentCliente: Cliente | null = null, currentBodega: Bodega | null = null) => {
 
 		const clienteGuardado = localStorage.getItem('clientePorDefecto');
 		var clienteSeteado = null
@@ -775,10 +781,10 @@ function POSContent() {
 			id: `order-${Date.now()}`,
 			id_backend: null,
 			id_venta: null,
-			id_bodega: selectedBodega ? selectedBodega.id : null,
-			bodega: selectedBodega,
-			id_cliente: clienteSeteado ? clienteSeteado.id : null,
-			cliente: clienteSeteado,
+			id_bodega: currentBodega ? currentBodega.id : null,
+			bodega: currentBodega,
+			id_cliente: currentCliente ? currentCliente.id : null,
+			cliente: currentCliente,
 			id_ubicacion: ubicacion ? ubicacion.id : null,
 			ubicacion: ubicacion,
 			ubicacion_nombre: ubicacion ? ubicacion.nombre : "Mostrador",
@@ -810,31 +816,19 @@ function POSContent() {
 	// 🔥 FUNCIÓN MEJORADA PARA AGREGAR PRODUCTOS CON LA LÓGICA DE IVA
 	const addProductToOrder = async (product: Product, quantity = 1) => {
 
-		if (!selectedCliente || !selectedBodega) {
-			let missing: string[] = [];
-			if (!selectedCliente) {
-				missing.push('Cliente');
-			}
-			if (!selectedBodega) {
-				missing.push('Bodega');
-			}
+		const clienteToUse = selectedCliente || clienteDefecto;
+		const bodegaToUse = selectedBodega || bodegaDefecto; 
 
-			const message = `No puedes agregar productos sin: ${missing.join(' y ')}.`;
+		if (!selectedCliente) {
+			setSelectedCliente(clienteDefecto);
+		}
 
-			// 1. Mostrar el Toast con el mensaje dinámico
-			window.dispatchEvent(new CustomEvent('showToast', {
-				detail: { 
-					message: message,
-					type: 'warning',
-					autoClose: true,
-					duration: 5000
-				}
-			}));
-			return
+		if (!selectedBodega) {
+			setSelectedBodega(selectedBodega);
 		}
 
 		if (!currentOrder) {
-			await createNewOrder()
+			await createNewOrder(selectedLocation, clienteToUse, bodegaToUse)
 			return
 		}
 		
@@ -900,7 +894,7 @@ function POSContent() {
 		}
 		
 		const updatedOrder = calculateOrderTotals({ ...currentOrder, productos: updatedProducts })
-		await updateOrderLocallyAndRemotely(updatedOrder, selectedCliente, selectedLocation, selectedBodega)
+		await updateOrderLocallyAndRemotely(updatedOrder, clienteToUse, selectedLocation, bodegaToUse)
 	}
 
 	const calculateProductTotals = (product: Product, quantity: number = 1) => {
