@@ -1236,9 +1236,13 @@ function POSContent() {
 						<div className="relative flex-shrink-0">
 							<div className="absolute inset-0 bg-primary/20 rounded-lg blur-[2px]" />
 							<img 
-							src={empresa.logo} 
-							alt={empresa.razon_social}
-							className="relative h-8 w-8 rounded-lg object-cover border border-white/20 shadow-sm ring-1 ring-border/50"
+								src={
+									empresa.logo.startsWith('http') 
+									? empresa.logo 
+									: `https://porfaolioerpbucket.nyc3.digitaloceanspaces.com/${empresa.logo.replace(/^\//, '')}`
+								} 
+								alt={empresa.razon_social}
+								className="relative h-8 w-8 rounded-lg object-cover border border-white/20 shadow-sm ring-1 ring-border/50"
 							/>
 						</div>
 						) : (
@@ -1256,7 +1260,7 @@ function POSContent() {
 						</h1>
 						<div className="flex items-center gap-2">
 							<span className="text-[10px] font-bold text-muted-foreground/60 tracking-[0.05em] uppercase">
-							Terminal 01
+								SISTEMA POS
 							</span>
 							{ivaIncluido && (
 							<div className="flex items-center">
