@@ -1,11 +1,12 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { useState, useEffect, useMemo } from "react"
+import { useAuthStorage } from '@/hooks/useAuthStorage';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Search, Eye, Trash2, MapPin, Calendar, DollarSign, Filter, Grid, List, ChevronLeft, ChevronRight, Hash, X, CheckCircle, Clock, Info
@@ -127,6 +128,7 @@ const getEstadoInfo = (estado: number, idVenta: number | null) => {
 }
 
 export function OrdersTableView({ orders, onSelectOrder, onDeleteOrder, onClose }: OrdersTableViewProps) {
+  const { getToken } = useAuthStorage();
   const [pedidos, setPedidos] = useState<Pedido[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -229,13 +231,16 @@ export function OrdersTableView({ orders, onSelectOrder, onDeleteOrder, onClose 
 
   const imprimirOrden = (order: Order) => {
     let pdfUrl = '';
+    const token = getToken();
     
     if (order.estado === "completado" && order.id_venta) {
       // Orden completada - usar id_venta
-      pdfUrl = `https://app.portafolioerp.com/pos/venta-print/${order.id_venta}`;
+      // pdfUrl = `http://localhost:8000/pos/venta-print/${token}/${order.id_venta}`;
+      pdfUrl = `https://app.portafolioerp.com/pos/venta-print/${token}/${order.id_venta}`;
     } else if (order.id_backend) {
       // Orden pendiente - usar id_backend
-      pdfUrl = `https://app.portafolioerp.com/pos/pedido-print/${order.id_backend}`;
+      // pdfUrl = `https://app.portafolioerp.com/pos/pedido-print/${token}/${order.id_backend}`;
+      pdfUrl = `https://app.portafolioerp.com/pos/pedido-print/${token}/${order.id_backend}`;
     } else {
       // Orden local sin id_backend
       console.warn('No se puede imprimir orden local sin id_backend');
