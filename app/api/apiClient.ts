@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 const apiClient = axios.create({
-    baseURL: 'https://app.portafolioerp.com/api', // 🔥 Verifica que esta URL sea correcta
+    baseURL: 'https://app.portafolioerp.com/api',
+    // baseURL: 'http://localhost:8000/api',
     headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -11,7 +12,6 @@ const apiClient = axios.create({
 
 // Interceptor para añadir el token a las peticiones
 apiClient.interceptors.request.use((config) => {
-    // Verificar que estamos en el cliente antes de acceder a localStorage
     if (typeof window !== 'undefined') {
         const token = localStorage.getItem('authToken');
         if (token) {
@@ -23,66 +23,52 @@ apiClient.interceptors.request.use((config) => {
 
 // Interceptor para manejar errores de autenticación
 apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (typeof window !== "undefined") {
-      const errorData = error.response?.data
-      if (errorData) {
-        let errorMessage = ''
-        
-        // Función recursiva para extraer mensajes de error
-        const extractErrorMessages = (obj: any, prefix: string = ''): void => {
-          for (const key in obj) {
-            if (obj.hasOwnProperty(key)) {
-              const value = obj[key];
-              const currentPath = prefix ? `${prefix}` : key;
-              
-              if (typeof value === 'string') {
-                // Es un mensaje de error final
-                errorMessage += `${currentPath}: ${value}\n`;
-              } else if (Array.isArray(value)) {
-                // Es un array de errores
-                value.forEach((error: string) => {
-                  errorMessage += `${currentPath}: ${error}\n`;
-                });
-              } else if (typeof value === 'object' && value !== null) {
-                // Es un objeto anidado, llamar recursivamente
-                extractErrorMessages(value, currentPath);
-              }
+    (response) => response,
+    (error) => {
+        if (typeof window !== "undefined") {
+            const errorData = error.response?.data;
+            
+            if (errorData) {
+                let messages: string[] = [];
+
+                // Función ultra-limpia para extraer solo el contenido
+                const collectMessages = (obj: any) => {
+                    if (typeof obj === 'string') {
+                        messages.push(obj);
+                    } else if (Array.isArray(obj)) {
+                        obj.forEach(item => collectMessages(item));
+                    } else if (typeof obj === 'object' && obj !== null) {
+                        // Iteramos solo los VALORES, ignorando las llaves técnicas como "Movimiento contable"
+                        Object.values(obj).forEach(val => collectMessages(val));
+                    }
+                };
+
+                // Extraemos de 'message' o de 'errors' (dependiendo de cómo responda tu API)
+                collectMessages(errorData.message || errorData.errors || errorData);
+
+                // Unimos con <br> por si hay varios errores, pero el HTML pasará puro
+                const finalMessage = messages.join('<br>');
+
+                if (finalMessage) {
+                    window.dispatchEvent(new CustomEvent('showError', {
+                        detail: { 
+                            message: finalMessage, 
+                            type: 'error',
+                            html: true,
+                            autoClose: true,
+                            duration: 15000 // Más tiempo porque las tablas son largas
+                        }
+                    }));
+                }
             }
-          }
-        }
-        
-        // Formatear el mensaje de error
-        if (typeof errorData.message === 'object') {
-          extractErrorMessages(errorData.message);
-        } else if (typeof errorData.message === 'string') {
-          errorMessage = errorData.message;
-        }
-        
-        console.log('errorMessage: ', errorMessage);
-        
-        // Disparar evento con tipo de error
-        if (errorMessage) {
-          window.dispatchEvent(new CustomEvent('showError', {
-            detail: { 
-              message: errorMessage,
-              type: 'error',
-              autoClose: true,
-              duration: 5000
+
+            if (error.response?.status === 401) {
+                localStorage.removeItem('authToken');
+                window.location.href = '/login';
             }
-          }));
         }
-      }
-      
-      if (error.response?.status === 401) {
-        localStorage.removeItem('authToken');
-        window.location.href = '/login';
-      }
+        return Promise.reject(error);
     }
-    
-    return Promise.reject(error);
-  }
 );
 
 export default apiClient;

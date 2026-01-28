@@ -12,6 +12,7 @@ import { PaymentModal } from "@/components/payment-modal"
 import { OrdersTableView } from "@/components/orders-table-view"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "@/components/theme-provider"
+import { useAuthStorage } from '@/hooks/useAuthStorage'
 import { 
 	Sun, 
 	Moon, 
@@ -192,6 +193,7 @@ interface ValidationConfig {
 }
 
 function POSContent() {
+	const { getToken } = useAuthStorage()
 	const { theme, setTheme } = useTheme()
 	const confirmDialog = useConfirmation()
 	const [orders, setOrders] = useState<Order[]>([])
@@ -327,6 +329,8 @@ function POSContent() {
 				concepto: "",
 			}
 		});
+
+		console.log('frontendItems: ',frontendItems);
 
 		var ivaCalculo = 0
 		var retencionCalculo = 0
@@ -970,10 +974,10 @@ function POSContent() {
 		// AJUSTE DEL TOTAL Y SUBTOTAL POR UNIDAD (Lógica Exacta de la Función Antigua)
 		totalProductoUnitario = precioUnitario - descuentoValor;
 		
-		if (!ivaIncluido) {
-			totalProductoUnitario += ivaValorUnitario;
-		} else {
+		if (ivaIncluido) {
 			subtotalUnitario -= ivaValorUnitario;
+		} else {
+			totalProductoUnitario += ivaValorUnitario;
 		}
 		
 		// CÁLCULO DE RETENCIÓN POR UNIDAD (Se calcula con el porcentaje del producto, NO el global)
@@ -987,6 +991,14 @@ function POSContent() {
 		const ivaValor = ivaValorUnitario * quantity;
 		const retencionValor = retencionValorUnitario * quantity;
 		const totalProducto = totalProductoUnitario * quantity;
+
+		console.log('subtotal: ',subtotal);
+		console.log('ivaValor: ',ivaValor);
+		console.log('retencionValor: ',retencionValor);
+		console.log('totalProducto: ',totalProducto);
+		console.log('ivaPorcentaje: ',ivaPorcentaje);
+		console.log('retencionPorcentaje: ',retencionPorcentaje);
+		console.log('descuentoValor: ',descuentoValor);
 
 		return {
 			subtotal,
@@ -1198,7 +1210,9 @@ function POSContent() {
 					}));
 	
 					if (savedOrder.id_venta) {
-						const pdfUrl = `https://app.portafolioerp.com/pos/venta-print/${savedOrder.id_venta}`;
+						const token = getToken();
+						const pdfUrl = `https://app.portafolioerp.com/pos/venta-print/${token}/${savedOrder.id_venta}`;
+
 						window.open(pdfUrl, '_blank');
 					}
 				}
@@ -1383,13 +1397,12 @@ function POSContent() {
 				/>
 
 				<div className="flex-1 flex flex-col overflow-hidden">
-					<div className="p-4 border-b border-border flex-shrink-0">
-						<LocationSelector
-							selectedLocation={selectedLocation}
-							onLocationSelect={handleUpdateUbicacion}
-        					occupiedLocationIds={occupiedLocationIds}
-						/>
-					</div>
+					
+					<LocationSelector
+						selectedLocation={selectedLocation}
+						onLocationSelect={handleUpdateUbicacion}
+						occupiedLocationIds={occupiedLocationIds}
+					/>
 
 					<div className="flex-1 overflow-auto">
 						<ProductGrid onProductSelect={addProductToOrder} />

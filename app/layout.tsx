@@ -77,7 +77,7 @@ export const metadata: Metadata = {
     url: 'https://pos.portafolioerp.com',
     siteName: 'Portafolio ERP POS',
     title: "🚀 POS Portafolio ERP | Facturación Electrónica DIAN + Control Inventario",
-    description: "💳 Sistema POS todo-en-uno: Facturación DIAN, inventario en tiempo real, múltiples formas de pago. ¡Prueba gratis! Optimizado para comercios colombianos.",
+    description: "💳 Sistema POS todo en uno: Facturación DIAN, inventario en tiempo real, múltiples formas de pago. ¡Prueba gratis! Optimizado para comercios colombianos.",
     images: [
       {
         url: '/img/og-facebook-pos.jpg',

@@ -1,4 +1,4 @@
-// components/ToastProvider.tsx (o donde lo almacenes)
+// components/ToastProvider.tsx
 
 "use client"
 
@@ -13,12 +13,12 @@ declare global {
 }
 // --------------------------------------------------------------------
 
-
 type ToastType = "error" | "success" | "warning" | "info"
 
 export interface ToastOptions {
   id?: string
   message: string
+  html?: boolean // Nueva propiedad para indicar que el mensaje contiene HTML
   type?: ToastType
   autoClose?: boolean
   duration?: number
@@ -130,7 +130,7 @@ function ToastItem({
   data: ToastRecord
   onClose: (id: string) => void
 }) {
-  const { id, message, type, autoClose, duration } = data
+  const { id, message, html, type, autoClose, duration } = data
   const [progress, setProgress] = useState(100)
   const [show, setShow] = useState(true) // para animación de salida
   const [isHovered, setIsHovered] = useState(false)
@@ -189,7 +189,7 @@ function ToastItem({
     <div
       className={[
         // container
-        "pointer-events-auto w-[360px] max-w-[92vw]",
+        "pointer-events-auto w-full max-w-md min-w-[360px] max-w-[92vw]",
         "rounded-xl border-l-4 shadow-lg shadow-black/10 text-white",
         "backdrop-blur-sm",
         styles.bg,
@@ -226,13 +226,22 @@ function ToastItem({
 
       <div className="p-4">
         <div className="flex items-start gap-3">
-          <div className="p-1.5 rounded-full bg-white/20 flex items-center justify-center">
+          <div className="p-1.5 rounded-full bg-white/20 flex items-center justify-center shrink-0">
             <Icon className="h-5 w-5 text-white" />
           </div>
 
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 overflow-hidden">
             <p className="text-sm font-semibold">{typeStyles[type].title}</p>
-            <p className="text-sm mt-1 break-words opacity-90">{message}</p>
+            <div className="text-sm mt-1 opacity-90 max-h-60 overflow-y-auto">
+              {html ? (
+                <div 
+                  className="prose prose-sm prose-invert max-w-none"
+                  dangerouslySetInnerHTML={{ __html: message }}
+                />
+              ) : (
+                <p className="break-words">{message}</p>
+              )}
+            </div>
           </div>
 
           <button
@@ -240,7 +249,7 @@ function ToastItem({
               setShow(false)
               setTimeout(() => onClose(id), 220)
             }}
-            className="flex-shrink-0 text-white/80 hover:text-white transition-colors"
+            className="flex-shrink-0 text-white/80 hover:text-white transition-colors self-start"
             aria-label="Cerrar notificación"
           >
             <X className="h-4 w-4" />
@@ -260,6 +269,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     const record: ToastRecord = {
       id,
       message: opts.message,
+      html: opts.html ?? false, // Por defecto no interpretar HTML
       type: opts.type ?? "info",
       autoClose: opts.autoClose ?? true,
       duration: opts.duration ?? 5000,
@@ -277,15 +287,27 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     // Compat: tu evento anterior "showError"
     const legacy = (e: Event) => {
       const ev = e as CustomEvent
-      const { message, type = "error", autoClose = true, duration = 5000 } = ev.detail || {}
-      show({ message, type, autoClose, duration })
+      const { 
+        message, 
+        type = "error", 
+        autoClose = true, 
+        duration = 5000,
+        html = false // Nuevo parámetro
+      } = ev.detail || {}
+      show({ message, type, autoClose, duration, html })
     }
 
     // Nuevo evento "showToast"
     const standard = (e: Event) => {
       const ev = e as CustomEvent
-      const { message, type = "info", autoClose = true, duration = 5000 } = ev.detail || {}
-      show({ message, type, autoClose, duration })
+      const { 
+        message, 
+        type = "info", 
+        autoClose = true, 
+        duration = 5000,
+        html = false // Nuevo parámetro
+      } = ev.detail || {}
+      show({ message, type, autoClose, duration, html })
     }
 
     // @ts-ignore
@@ -316,13 +338,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         className={[
           "pointer-events-none fixed inset-0 z-[9999]",
           // zonas clickables solo sobre los toasts
-          "flex flex-col items-end justify-end p-6",
+          "flex flex-col items-end justify-end p-4 md:p-6",
         ].join(" ")}
         aria-live="polite"
       >
-        <div className="flex flex-col gap-3 items-end pointer-events-none">
+        <div className="flex flex-col gap-3 items-end pointer-events-none w-full max-w-md">
           {toasts.map((t) => (
-            <div key={t.id} className="pointer-events-auto">
+            <div key={t.id} className="pointer-events-auto w-full">
               <ToastItem data={t} onClose={close} />
             </div>
           ))}
