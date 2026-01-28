@@ -46,13 +46,13 @@ export interface Product {
 		nombre: string
 		cuenta_venta_iva?: {
 			impuesto?: {
-				porcentaje: number
+				porcentaje: string
 			}
 		}
 		cuenta_venta_retencion?: {
 			impuesto?: {
-				porcentaje: number
-				base: number
+				porcentaje: string
+				base: string
 			}
 		}
 	}
@@ -329,8 +329,6 @@ function POSContent() {
 				concepto: "",
 			}
 		});
-
-		console.log('frontendItems: ',frontendItems);
 
 		var ivaCalculo = 0
 		var retencionCalculo = 0
@@ -877,8 +875,8 @@ function POSContent() {
 		let topeValor = 0;
 
 		if (product.familia && product.familia.cuenta_venta_retencion && product.familia.cuenta_venta_retencion.impuesto) {
-			impuestoPorcentaje = product.familia.cuenta_venta_retencion.impuesto.porcentaje;
-        	topeValor = product.familia.cuenta_venta_retencion.impuesto.base;
+			impuestoPorcentaje = parseFloat(product.familia.cuenta_venta_retencion.impuesto.porcentaje);
+        	topeValor = parseFloat(product.familia.cuenta_venta_retencion.impuesto.base);
 			
 			if (impuestoPorcentaje > porcentajeRetencion) {
 				impuestoPorcentaje = impuestoPorcentaje;
@@ -936,14 +934,14 @@ function POSContent() {
 	}
 
 	const calculateProductTotals = (product: Product, quantity: number = 1) => {
-
+		//ESTA MAL EL DESCUENTO, DEBE SER (precioUnitario * CANTIDAD) - descuentoValor
 		// 1. Inicialización con valores por unidad
 		const precioUnitario = Number.parseFloat(product.precio);
 		let descuentoValor = 0; // Asumiendo 0 como en la función antigua
 		let ivaPorcentaje = 0;
-		let subtotalUnitario = precioUnitario; // Base para el subtotal ANTES de IVA (por unidad)
+		let subtotalUnitario = precioUnitario * quantity; // Base para el subtotal ANTES de IVA (por unidad)
 		let ivaValorUnitario = 0;
-		let totalProductoUnitario = precioUnitario - descuentoValor; // Base para el total ANTES de IVA (por unidad)
+		let totalProductoUnitario = (precioUnitario * quantity )- descuentoValor; // Base para el total ANTES de IVA (por unidad)
 
 		// Variables locales para retención (para el cálculo de este producto)
 		let retencionPorcentaje = 0;
@@ -951,34 +949,35 @@ function POSContent() {
 
 		// OBTENER IVA DEL PRODUCTO
 		if (product.familia?.cuenta_venta_iva?.impuesto) {
-			ivaPorcentaje = product.familia.cuenta_venta_iva.impuesto.porcentaje;
+			ivaPorcentaje = parseFloat(product.familia.cuenta_venta_iva.impuesto.porcentaje);
 		}
 
 		// OBTENER RETE-FUENTE DEL PRODUCTO (Solo cálculo local, NO Lógica Global)
 		if (product.familia?.cuenta_venta_retencion?.impuesto) {
 			// 🔥 SIMPLEMENTE ASIGNAMOS EL PORCENTAJE DEL PRODUCTO. 
 			// La lógica de "cuál es el máximo" debe ir en addProductToOrder.
-			retencionPorcentaje = product.familia.cuenta_venta_retencion.impuesto.porcentaje;
+			retencionPorcentaje = parseFloat(product.familia.cuenta_venta_retencion.impuesto.porcentaje);
 		}
 
 		// CÁLCULO DE IVA POR UNIDAD (Lógica Exacta de la Función Antigua)
 		// ... (El resto de la lógica de IVA es correcta, la omito por brevedad)
 		if (ivaPorcentaje > 0) {
 			if (ivaIncluido) {
-				ivaValorUnitario = (precioUnitario - descuentoValor) - ((precioUnitario - descuentoValor) / (1 + (ivaPorcentaje / 100)));
+				ivaValorUnitario = totalProductoUnitario * (ivaPorcentaje / (ivaPorcentaje + 100));
 			} else {
-				ivaValorUnitario = (precioUnitario - descuentoValor) * (ivaPorcentaje / 100);
+				ivaValorUnitario = totalProductoUnitario * (ivaPorcentaje / 100);
 			}
 		}
 
 		// AJUSTE DEL TOTAL Y SUBTOTAL POR UNIDAD (Lógica Exacta de la Función Antigua)
-		totalProductoUnitario = precioUnitario - descuentoValor;
-		
+		console.log('ivaIncluido: ',ivaIncluido);
+		console.log('ivaValorUnitario: ',ivaValorUnitario);
 		if (ivaIncluido) {
 			subtotalUnitario -= ivaValorUnitario;
 		} else {
 			totalProductoUnitario += ivaValorUnitario;
 		}
+
 		
 		// CÁLCULO DE RETENCIÓN POR UNIDAD (Se calcula con el porcentaje del producto, NO el global)
 		if (retencionPorcentaje > 0) {
@@ -987,7 +986,7 @@ function POSContent() {
 		}
 		
 		// 2. Aplicar la cantidad al final
-		const subtotal = subtotalUnitario * quantity;
+		const subtotal = subtotalUnitario;
 		const ivaValor = ivaValorUnitario * quantity;
 		const retencionValor = retencionValorUnitario * quantity;
 		const totalProducto = totalProductoUnitario * quantity;
@@ -1037,7 +1036,7 @@ function POSContent() {
 		if (productToUpdate.iva_porcentaje) {
 			totalIva = (totalPorCantidad - totalDescuento) * (productToUpdate.iva_porcentaje / 100);
 			if (ivaIncluido) {
-				totalIva = (totalPorCantidad - totalDescuento) - ((totalPorCantidad - totalDescuento) / (1 + (productToUpdate.iva_porcentaje / 100)));
+				totalIva = (totalPorCantidad - totalDescuento) * (productToUpdate.iva_porcentaje / (productToUpdate.iva_porcentaje + 100));
 			}
 		}
 
