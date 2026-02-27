@@ -851,7 +851,6 @@ function POSContent() {
 	
 	// 🔥 FUNCIÓN MEJORADA PARA AGREGAR PRODUCTOS CON LA LÓGICA DE IVA
 	const addProductToOrder = async (product: Product, quantity = 1) => {
-
 		const clienteToUse = selectedCliente || clienteDefecto;
 		const bodegaToUse = selectedBodega || bodegaDefecto; 
 
@@ -891,13 +890,11 @@ function POSContent() {
 		}
 
 		if (existingProductIndex >= 0) {
-			
 			updatedProducts = [...currentOrder.productos]
 			const item = updatedProducts[existingProductIndex]
 			
 			const newQuantity = item.cantidad + quantity
 			const totals = calculateProductTotals(product, newQuantity)
-			
 			item.cantidad = newQuantity
 			item.subtotal = totals.subtotal
 			item.iva_valor = totals.ivaValor
@@ -908,7 +905,6 @@ function POSContent() {
 		} else {
 			
 			const totals = calculateProductTotals(product, quantity)
-			
 			const orderItem: OrderItem = {
 				consecutivo: currentOrder.productos.length + 1,
 				id_producto: product.id,
@@ -954,13 +950,10 @@ function POSContent() {
 
 		// OBTENER RETE-FUENTE DEL PRODUCTO (Solo cálculo local, NO Lógica Global)
 		if (product.familia?.cuenta_venta_retencion?.impuesto) {
-			// 🔥 SIMPLEMENTE ASIGNAMOS EL PORCENTAJE DEL PRODUCTO. 
-			// La lógica de "cuál es el máximo" debe ir en addProductToOrder.
 			retencionPorcentaje = parseFloat(product.familia.cuenta_venta_retencion.impuesto.porcentaje);
 		}
 
 		// CÁLCULO DE IVA POR UNIDAD (Lógica Exacta de la Función Antigua)
-		// ... (El resto de la lógica de IVA es correcta, la omito por brevedad)
 		if (ivaPorcentaje > 0) {
 			if (ivaIncluido) {
 				ivaValorUnitario = totalProductoUnitario * (ivaPorcentaje / (ivaPorcentaje + 100));
@@ -970,34 +963,22 @@ function POSContent() {
 		}
 
 		// AJUSTE DEL TOTAL Y SUBTOTAL POR UNIDAD (Lógica Exacta de la Función Antigua)
-		console.log('ivaIncluido: ',ivaIncluido);
-		console.log('ivaValorUnitario: ',ivaValorUnitario);
 		if (ivaIncluido) {
 			subtotalUnitario -= ivaValorUnitario;
 		} else {
 			totalProductoUnitario += ivaValorUnitario;
 		}
-
 		
 		// CÁLCULO DE RETENCIÓN POR UNIDAD (Se calcula con el porcentaje del producto, NO el global)
 		if (retencionPorcentaje > 0) {
-			// La retención se calcula sobre el subtotal (precio - descuento), que se considera la base.
 			retencionValorUnitario = (precioUnitario - descuentoValor) * (retencionPorcentaje / 100);
 		}
 		
 		// 2. Aplicar la cantidad al final
 		const subtotal = subtotalUnitario;
-		const ivaValor = ivaValorUnitario * quantity;
-		const retencionValor = retencionValorUnitario * quantity;
-		const totalProducto = totalProductoUnitario * quantity;
-
-		console.log('subtotal: ',subtotal);
-		console.log('ivaValor: ',ivaValor);
-		console.log('retencionValor: ',retencionValor);
-		console.log('totalProducto: ',totalProducto);
-		console.log('ivaPorcentaje: ',ivaPorcentaje);
-		console.log('retencionPorcentaje: ',retencionPorcentaje);
-		console.log('descuentoValor: ',descuentoValor);
+		const ivaValor = ivaValorUnitario;
+		const retencionValor = retencionValorUnitario;
+		const totalProducto = totalProductoUnitario;
 
 		return {
 			subtotal,
