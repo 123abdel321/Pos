@@ -697,11 +697,11 @@ function POSContent() {
 	// --- FUNCIONES DE MANEJO DE ORDENES ---
 
 	const selectOrder = async (order: Order, findInBakend = true) => {
-
 		setLoadingOrderId(order.id)
 		
 		try {
 			var orderResponse = null
+
 			if (findInBakend) {
 				const response = await apiClient.get(`/pos/pedidos/${order.id_backend}`);
 				orderResponse = response.data.data
@@ -773,8 +773,52 @@ function POSContent() {
 			} else {
 				setSelectedLocation(null)
 			}
+
+			let detalleOrden = [];
+			if (orderResponse && orderResponse.detalles) {
+				detalleOrden = orderResponse.detalles.map((detalle: any, index: number): OrderItem => {
+					const subtotalNum = Number.parseFloat(detalle.subtotal || '0');
+					const ivaValorNum = Number.parseFloat(detalle.iva_valor || '0');
+					const totalNum = Number.parseFloat(detalle.total || '0');
+					const retencionValorNum = Number.parseFloat(detalle.retencion_valor || '0');
+					const retencionPorcentajeNum = Number.parseFloat(detalle.retencion_porcentaje || '0');
+					return {
+						consecutivo: index + 1,
+						id_producto: detalle.id_producto,
+						nombre: detalle.descripcion,
+						cantidad: Number.parseFloat(detalle.cantidad || '0'),
+						costo: Number.parseFloat(detalle.costo || '0'),
+						subtotal: subtotalNum,
+						descuento_porcentaje: Number.parseFloat(detalle.descuento_porcentaje || '0'),
+						descuento_valor: Number.parseFloat(detalle.descuento_valor || '0'),
+						iva_porcentaje: Number.parseFloat(detalle.iva_porcentaje || '0'),
+						iva_valor: ivaValorNum,
+						retencion_porcentaje: retencionPorcentajeNum,
+						retencion_valor: retencionValorNum,
+						total: totalNum,
+						concepto: detalle.concepto || ''
+					}
+				});
+			}
 			
-			setCurrentOrder(order)
+			const orderWithUpdatedItems = {
+				...order,
+				productos: detalleOrden,
+				...(orderResponse && {
+					subtotal: Number.parseFloat(orderResponse.subtotal || '0'),
+					total_iva: Number.parseFloat(orderResponse.total_iva || '0'),
+					total_descuento: Number.parseFloat(orderResponse.total_descuento || '0'),
+					total_factura: Number.parseFloat(orderResponse.total_factura || '0'),
+				})
+			};
+
+			setCurrentOrder(orderWithUpdatedItems)
+			
+			setOrders(prevOrders => 
+				prevOrders.map(o => 
+					o.id === order.id ? orderWithUpdatedItems : o
+				)
+			);
 
 		} catch (error) {
 			console.error('Error al cargar el pedido:', error)
