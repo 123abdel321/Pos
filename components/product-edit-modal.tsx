@@ -132,7 +132,7 @@ export function ProductEditModal({ ivaIncluido, product, isOpen, onClose, onSave
             descuento_porcentaje: formData.descuento_porcentaje,
             descuento_valor: formData.descuento_valor,
             concepto: formData.concepto,
-            subtotal: calculatedValues.subtotal,
+            subtotal: ivaIncluido ? calculatedValues.subtotal - calculatedValues.iva_valor : calculatedValues.subtotal,
             iva_valor: calculatedValues.iva_valor,
             total: calculatedValues.total,
         }
