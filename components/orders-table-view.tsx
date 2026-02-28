@@ -87,7 +87,11 @@ const mapPedidoToOrder = (pedido: Pedido): Order => {
         retencion_porcentaje: 0,
         retencion_valor: 0,
         total: Number.parseFloat(detalle.total),
-        concepto: ""
+        concepto: "",
+        id_cuenta_venta_iva: null,
+        id_cuenta_venta_descuento: null,
+        id_cuenta_venta_retencion: null,
+        
     }))
 
     return {
