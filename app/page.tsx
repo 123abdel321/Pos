@@ -263,7 +263,6 @@ function POSContent() {
 		let descuento = 0;
 		let total = 0;
 		let valorBruto = 0;
-		let redondeo = 0;
 
 		// Calcular valores base (IGUAL A TU JAVASCRIPT)
 		order.productos.forEach(producto => {
@@ -276,11 +275,6 @@ function POSContent() {
 		if (ivaIncluido) valorBruto -= iva;
 
 		total = ivaIncluido ? valorBruto : valorBruto + iva;
-
-		// Calcular retención (IGUAL A TU JAVASCRIPT)
-		if (total >= topeRetencion) {
-			retencion = porcentajeRetencion ? (valorBruto * porcentajeRetencion) / 100 : 0;
-		}
 
 		// Ajuste final del total (IGUAL A TU JAVASCRIPT)
 		if (ivaIncluido) total = total + iva;
@@ -299,6 +293,15 @@ function POSContent() {
 			acc[tasa] += item.iva_valor;
 			return acc;
 		}, {} as { [key: number]: number });
+
+		// Calcular retención (IGUAL A TU JAVASCRIPT)
+		if (total >= topeRetencion) {
+			retencion = porcentajeRetencion ? (valorBruto * porcentajeRetencion) / 100 : 0;
+		}
+
+		if (retencion) {
+			total -= retencion;
+		}
 		
 		return { 
 			...order, 
@@ -306,6 +309,7 @@ function POSContent() {
 			iva, 
 			retencion, 
 			total,
+			porcentaje_retencion: porcentajeRetencion,
 			iva_desglose: ivaPorTasas
 		};
 	}

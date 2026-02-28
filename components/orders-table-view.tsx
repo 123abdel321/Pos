@@ -90,8 +90,7 @@ const mapPedidoToOrder = (pedido: Pedido): Order => {
         concepto: "",
         id_cuenta_venta_iva: null,
         id_cuenta_venta_descuento: null,
-        id_cuenta_venta_retencion: null,
-        
+        id_cuenta_venta_retencion: null,        
     }))
 
     return {

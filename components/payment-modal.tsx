@@ -369,8 +369,12 @@ export function PaymentModal({ order, onPayment, onClose }: PaymentModalProps) {
                                     <span>{formatPrice(order.subtotal)}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-muted-foreground">IVA (19%):</span>
+                                    <span className="text-muted-foreground">IVA:</span>
                                     <span>{formatPrice(order.iva)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">RETENCIÓN:</span>
+                                    <span>{formatPrice(order.retencion)}</span>
                                 </div>
                                 <Separator className="my-1 bg-border/40" />
                                 <div className="flex justify-between items-center border-t border-dashed border-border pt-1">
