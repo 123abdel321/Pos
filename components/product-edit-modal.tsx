@@ -9,13 +9,15 @@ import { X } from "lucide-react"
 import type { OrderItem } from "@/app/page"
 
 interface ProductEditModalProps {
+    ivaIncluido: boolean
     product: OrderItem
     isOpen: boolean
     onClose: () => void
     onSave: (updatedProduct: OrderItem) => void
 }
 
-export function ProductEditModal({ product, isOpen, onClose, onSave }: ProductEditModalProps) {
+export function ProductEditModal({ ivaIncluido, product, isOpen, onClose, onSave }: ProductEditModalProps) {
+    console.log('product: ',product)
     const [formData, setFormData] = useState({
         cantidad: product.cantidad,
         costo: product.costo,
@@ -43,14 +45,46 @@ export function ProductEditModal({ product, isOpen, onClose, onSave }: ProductEd
     }, [isOpen, product])
 
     useEffect(() => {
-        const subtotal = formData.cantidad * formData.costo
-        const iva_valor = subtotal * (product.iva_porcentaje / 100)
-        const total = subtotal - formData.descuento_valor + iva_valor
+        const costoProducto = formData.costo;
+        const cantidadProducto = formData.cantidad;
+        const ivaProducto = product.iva_porcentaje;
+        const descuentoProducto = formData.descuento_porcentaje;
+        console.log('formData: ',formData);
+        var subTotal = formData.cantidad * formData.costo;
+        var totalPorCantidad = 0;
+        var totalIva = 0;
+        var totalDescuento = 0;
+        var totalProducto = 0;
+
+        if (cantidadProducto > 0) {
+            totalPorCantidad = cantidadProducto * costoProducto;
+        }
+
+        if (descuentoProducto > 0) {
+            totalDescuento = totalPorCantidad * (descuentoProducto / 100);
+            subTotal -= totalDescuento;
+        }
+
+        totalProducto = totalPorCantidad - totalDescuento;
+
+        if (ivaProducto > 0) {
+            totalIva = (totalPorCantidad - totalDescuento) * ivaProducto / 100;
+            if (ivaIncluido) {
+                subTotal = (totalPorCantidad - totalDescuento);
+                totalIva = subTotal * (ivaProducto / (ivaProducto + 100));
+            }
+        }
+
+        if (!ivaIncluido) {
+            totalProducto+= totalIva;
+        }
+
+        totalProducto = Math.round(totalProducto * 100) / 100;
 
         setCalculatedValues({
-            subtotal,
-            iva_valor,
-            total,
+            subtotal: subTotal,
+            iva_valor: totalIva,
+            total: totalProducto,
         })
     }, [formData, product.iva_porcentaje])
 
@@ -170,36 +204,39 @@ export function ProductEditModal({ product, isOpen, onClose, onSave }: ProductEd
                             />
                         </div>
 
-                        <div>
-                            <Label htmlFor="descuento-porcentaje" className="text-sm font-medium">
-                                % Dscto
-                            </Label>
-                            <Input
-                                id="descuento-porcentaje"
-                                type="number"
-                                min="0"
-                                max="100"
-                                step="0.01"
-                                value={formData.descuento_porcentaje}
-                                onChange={(e) => handleInputChange("descuento_porcentaje", e.target.value)}
-                                className="mt-1"
-                            />
-                        </div>
-
-                        <div>
-                            <Label htmlFor="descuento-valor" className="text-sm font-medium">
-                                Dscto
-                            </Label>
-                            <Input
-                                id="descuento-valor"
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={formData.descuento_valor}
-                                onChange={(e) => handleInputChange("descuento_valor", e.target.value)}
-                                className="mt-1"
-                            />
-                        </div>
+                        {
+                            product.id_cuenta_venta_descuento ? (<>
+                                <div>
+                                    <Label htmlFor="descuento-porcentaje" className="text-sm font-medium">
+                                        % Dscto
+                                    </Label>
+                                    <Input
+                                        id="descuento-porcentaje"
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        step="0.01"
+                                        value={formData.descuento_porcentaje}
+                                        onChange={(e) => handleInputChange("descuento_porcentaje", e.target.value)}
+                                        className="mt-1"
+                                    />
+                                </div>
+                                <div>
+                                    <Label htmlFor="descuento-valor" className="text-sm font-medium">
+                                        Dscto
+                                    </Label>
+                                    <Input
+                                        id="descuento-valor"
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={formData.descuento_valor}
+                                        onChange={(e) => handleInputChange("descuento_valor", e.target.value)}
+                                        className="mt-1"
+                                    />
+                                </div>
+                            </>) : null
+                        }
 
                         <div>
                             <Label className="text-sm font-medium">Iva</Label>

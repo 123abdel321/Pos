@@ -44,12 +44,17 @@ export interface Product {
 	inventarios: Array<{ cantidad: string }>
 	familia: {
 		nombre: string
+		cuenta_venta_descuento?: {
+			id: number
+		}
 		cuenta_venta_iva?: {
+			id?: number
 			impuesto?: {
 				porcentaje: string
 			}
 		}
 		cuenta_venta_retencion?: {
+			id?: number
 			impuesto?: {
 				porcentaje: string
 				base: string
@@ -73,6 +78,9 @@ export interface OrderItem {
 	retencion_valor: number
 	total: number
 	concepto: string
+	id_cuenta_venta_iva: number | null
+	id_cuenta_venta_descuento: number | null
+	id_cuenta_venta_retencion: number | null
 }
 
 export interface Order {
@@ -327,6 +335,9 @@ function POSContent() {
 				retencion_valor: retencionValorNum,
 				total: totalNum,
 				concepto: "",
+				id_cuenta_venta_iva: detalle.id_cuenta_venta_iva,
+				id_cuenta_venta_descuento: detalle.id_cuenta_venta_descuento,
+				id_cuenta_venta_retencion: detalle.id_cuenta_venta_retencion
 			}
 		});
 
@@ -372,7 +383,7 @@ function POSContent() {
 		}
 
 		const totalIva = frontendItems.reduce((sum, item) => sum + item.iva_valor, 0);
-		// 🔥 CALCULAR IVA AGRUPADO POR TASA
+		//  CALCULAR IVA AGRUPADO POR TASA
 		const ivaPorTasas = backendOrder.detalles.reduce((acc, item) => {
 			const tasa = item.iva_porcentaje;
 
@@ -434,6 +445,9 @@ function POSContent() {
                 retencion_valor: retencionValorNum,
                 total: totalNum,
                 concepto: "",
+				id_cuenta_venta_iva: detalle.id_cuenta_venta_iva,
+				id_cuenta_venta_descuento: detalle.id_cuenta_venta_descuento,
+				id_cuenta_venta_retencion: detalle.id_cuenta_venta_retencion
             }
         });
 
@@ -444,7 +458,7 @@ function POSContent() {
             sum + (item.cantidad * item.costo) - item.descuento_valor, 0
         );
 
-        // 🔥 CALCULAR IVA AGRUPADO POR TASA
+        //  CALCULAR IVA AGRUPADO POR TASA
         const ivaPorTasas = backendOrder.detalles.reduce((acc, item) => {
             const tasa = item.iva_porcentaje;
 
@@ -563,7 +577,7 @@ function POSContent() {
 		}
 	}
 	
-	// 🔥 FUNCIÓN CENTRAL DE ACTUALIZACIÓN
+	//  FUNCIÓN CENTRAL DE ACTUALIZACIÓN
 	const updateOrderLocallyAndRemotely = useCallback(async (updatedOrder: Order, currentCliente: Cliente | null, currentLocation: Ubicacion | null, currentBodega: Bodega | null) => {
         setCurrentOrder(updatedOrder);
         setOrders(prev => prev.map(o => (o.id === updatedOrder.id ? updatedOrder : o)));
@@ -796,7 +810,10 @@ function POSContent() {
 						retencion_porcentaje: retencionPorcentajeNum,
 						retencion_valor: retencionValorNum,
 						total: totalNum,
-						concepto: detalle.concepto || ''
+						concepto: detalle.concepto || '',
+						id_cuenta_venta_iva: detalle.id_cuenta_venta_iva,
+						id_cuenta_venta_descuento: detalle.id_cuenta_venta_descuento,
+						id_cuenta_venta_retencion: detalle.id_cuenta_venta_retencion
 					}
 				});
 			}
@@ -893,7 +910,7 @@ function POSContent() {
 		}
 	}
 	
-	// 🔥 FUNCIÓN MEJORADA PARA AGREGAR PRODUCTOS CON LA LÓGICA DE IVA
+	// FUNCIÓN MEJORADA PARA AGREGAR PRODUCTOS CON LA LÓGICA DE IVA
 	const addProductToOrder = async (product: Product, quantity = 1) => {
 		const clienteToUse = selectedCliente || clienteDefecto;
 		const bodegaToUse = selectedBodega || bodegaDefecto; 
@@ -964,6 +981,9 @@ function POSContent() {
 				retencion_valor: totals.retencionValor,
 				total: totals.totalProducto,
 				concepto: "",
+				id_cuenta_venta_iva: product.familia?.cuenta_venta_iva?.id ?? null,
+				id_cuenta_venta_descuento: product.familia?.cuenta_venta_descuento?.id ?? null,
+				id_cuenta_venta_retencion: product.familia?.cuenta_venta_retencion?.id ?? null,
 			}
 
 			updatedProducts = [...currentOrder.productos, orderItem]
@@ -1046,7 +1066,7 @@ function POSContent() {
 		const productToUpdate = currentOrder.productos.find(item => item.id_producto === productId);
 		if (!productToUpdate) return;
 
-		// 🔥 CALCULAR NUEVOS VALORES SEGÚN TU LÓGICA DE JAVASCRIPT
+		//  CALCULAR NUEVOS VALORES SEGÚN TU LÓGICA DE JAVASCRIPT
 		const totalPorCantidad = productToUpdate.costo * newQuantity;
 		let totalIva = 0;
 		let totalDescuento = 0;
@@ -1304,7 +1324,7 @@ function POSContent() {
 							<div className="flex items-center">
 								<span className="text-muted-foreground/30 text-[10px] mr-1.5">•</span>
 								<span className="text-[9px] font-bold leading-none text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded-[4px] uppercase tracking-tighter">
-								IVA INC
+								IVA INCLUIDO
 								</span>
 							</div>
 							)}
@@ -1446,6 +1466,7 @@ function POSContent() {
 						onCancelOrder={cancelCurrentOrder}
 						selectedCliente={selectedCliente}
 						selectedBodega={selectedBodega}
+						ivaIncluido={ivaIncluido}
 					/>
 				</div>
 			</div>

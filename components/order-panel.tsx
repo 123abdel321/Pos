@@ -50,6 +50,7 @@ interface OrderPanelProps {
     onUpdateBodega?: (bodega: Bodega | null) => void
     selectedCliente: Cliente | null
     selectedBodega: Bodega | null
+    ivaIncluido: boolean
 }
 
 export function OrderPanel({
@@ -63,7 +64,8 @@ export function OrderPanel({
     onUpdateCliente,
     onUpdateBodega,
     selectedCliente,
-    selectedBodega
+    selectedBodega,
+    ivaIncluido
 }: OrderPanelProps) {
     const [isExpanded, setIsExpanded] = useState(true)
 
@@ -177,7 +179,7 @@ export function OrderPanel({
 
     const handleSaveProduct = (updatedProduct: OrderItem) => {
         if (onUpdateProduct) {
-        onUpdateProduct(updatedProduct)
+            onUpdateProduct(updatedProduct)
         }
         setEditingProduct(null)
     }
@@ -651,6 +653,7 @@ export function OrderPanel({
                     isOpen={!!editingProduct}
                     onClose={() => setEditingProduct(null)}
                     onSave={handleSaveProduct}
+                    ivaIncluido={ivaIncluido}
                 />
             )}
         </>
