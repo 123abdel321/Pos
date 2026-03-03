@@ -49,7 +49,7 @@ export function ProductEditModal({ ivaIncluido, product, isOpen, onClose, onSave
         const cantidadProducto = formData.cantidad;
         const ivaProducto = product.iva_porcentaje;
         const descuentoProducto = formData.descuento_porcentaje;
-        console.log('formData: ',formData);
+
         var subTotal = formData.cantidad * formData.costo;
         var totalPorCantidad = 0;
         var totalIva = 0;

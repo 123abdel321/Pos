@@ -1070,35 +1070,56 @@ function POSContent() {
 		const productToUpdate = currentOrder.productos.find(item => item.id_producto === productId);
 		if (!productToUpdate) return;
 
-		//  CALCULAR NUEVOS VALORES SEGÚN TU LÓGICA DE JAVASCRIPT
-		const totalPorCantidad = productToUpdate.costo * newQuantity;
-		let totalIva = 0;
-		let totalDescuento = 0;
-		let totalProducto = 0;
+		const costoProducto = productToUpdate.costo;
+		const cantidadProducto = newQuantity;
+		const ivaProducto = productToUpdate.iva_porcentaje;
+		const descuentoProducto = productToUpdate.descuento_porcentaje;
 
-		if (productToUpdate.descuento_porcentaje) {
-			totalDescuento = totalPorCantidad * (productToUpdate.descuento_porcentaje / 100);
-		}
+		var subTotal = newQuantity * costoProducto;
+        var totalPorCantidad = 0;
+        var totalIva = 0;
+        var totalDescuento = 0;
+        var totalProducto = 0;
+
+		if (cantidadProducto > 0) {
+            totalPorCantidad = cantidadProducto * costoProducto;
+        }
+
+		if (descuentoProducto > 0) {
+            totalDescuento = totalPorCantidad * (descuentoProducto / 100);
+            subTotal -= totalDescuento;
+        }
 
 		totalProducto = totalPorCantidad - totalDescuento;
 
-		if (productToUpdate.iva_porcentaje) {
-			totalIva = (totalPorCantidad - totalDescuento) * (productToUpdate.iva_porcentaje / 100);
-			if (ivaIncluido) {
-				totalIva = (totalPorCantidad - totalDescuento) * (productToUpdate.iva_porcentaje / (productToUpdate.iva_porcentaje + 100));
-			}
+		if (ivaProducto > 0) {
+            totalIva = (totalPorCantidad - totalDescuento) * ivaProducto / 100;
+            if (ivaIncluido) {
+                subTotal = (totalPorCantidad - totalDescuento);
+                totalIva = subTotal * (ivaProducto / (ivaProducto + 100));
+            }
+        }
+
+		if (ivaIncluido) {
+			subTotal-= totalIva;
+		} else {
+            totalProducto+= totalIva;
 		}
 
-		if (!ivaIncluido) {
-			totalProducto += totalIva;
-		}
+		totalProducto = Math.round(totalProducto * 100) / 100;
+
+		console.log('subTotal: ', subTotal);
+		console.log('totalPorCantidad: ', subTotal);
+		console.log('totalIva: ', subTotal);
+		console.log('totalDescuento: ', subTotal);
+		console.log('totalProducto: ', subTotal);
 
 		const updatedProducts = currentOrder.productos.map((item) => {
 			if (item.id_producto === productId) {
 				return {
 					...item,
 					cantidad: newQuantity,
-					subtotal: totalPorCantidad - totalDescuento,
+					subtotal: subTotal,
 					descuento_valor: totalDescuento,
 					iva_valor: totalIva,
 					total: totalProducto

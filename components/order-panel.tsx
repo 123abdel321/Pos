@@ -27,7 +27,7 @@ import {
 } from "lucide-react"
 import { ProductEditModal } from "./product-edit-modal"
 
-// 🔥 IMPORTAR TUS TIPOS (AJUSTA LA RUTA SI ES NECESARIO)
+// IMPORTAR TUS TIPOS (AJUSTA LA RUTA SI ES NECESARIO)
 import type { Order, OrderItem, Cliente, Bodega } from "@/app/page" // O usa "@/types/order"
 
 import {
@@ -89,7 +89,7 @@ export function OrderPanel({
 
                 const response = await apiClient.get('/nit/combo-nit', {
                     params: {
-                        search: searchCliente // Enviamos el término de búsqueda
+                        search: searchCliente
                     }
                 })
                 const data = response.data.data || response.data
@@ -116,7 +116,7 @@ export function OrderPanel({
                 setLoadingBodegas(true)
                 const response = await apiClient.get('/bodega/combo-bodega', {
                     params: {
-                        search: searchBodega // Enviamos el término de búsqueda
+                        search: searchBodega
                     }
                 })
                 const data = response.data.data || response.data
@@ -184,7 +184,7 @@ export function OrderPanel({
         setEditingProduct(null)
     }
 
-    // 🔥 VISTA SIN ORDEN ACTIVA (Se mantiene la lógica, pero envuelta en el nuevo diseño de colapso)
+    // VISTA SIN ORDEN ACTIVA (Se mantiene la lógica, pero envuelta en el nuevo diseño de colapso)
     const renderNoOrder = () => (
         <div className="flex-1 flex items-center justify-center p-8">
             <div className="text-center">
@@ -198,7 +198,7 @@ export function OrderPanel({
         </div>
     )
 
-    // 🔥 RENDERIZADO PRINCIPAL CON CLASES DE ANCHO DINÁMICO
+    // RENDERIZADO PRINCIPAL CON CLASES DE ANCHO DINÁMICO
     return (
         <>
             <div 
@@ -228,7 +228,7 @@ export function OrderPanel({
                             </div>
                         )}
                        
-                        {/* 🔥 BOTÓN TOGGLE DE EXPANDIR/COLAPSAR */}
+                        {/* BOTÓN TOGGLE DE EXPANDIR/COLAPSAR */}
                         <Button
                             variant="ghost"
                             size="icon"
@@ -277,7 +277,7 @@ export function OrderPanel({
                 
                 {/* -------------------- CONTENIDO PRINCIPAL (EXPANDIDO) -------------------- */}
                 {currentOrder && isExpanded && (
-                    // 🔥 CORRECCIÓN CLAVE: Usamos un DIV como contenedor Flex Column
+                    // CORRECCIÓN CLAVE: Usamos un DIV como contenedor Flex Column
                     // para distribuir correctamente el espacio entre 2.1 (fijo), 2.2 (scroll) y 2.3 (fijo).
                     <div className="flex-1 flex flex-col min-h-0"> 
                         
@@ -331,12 +331,12 @@ export function OrderPanel({
                                                 </div>
                                                 <div className="max-h-44 overflow-auto">
                                                     {loadingBodegas ? (
-                                                        // 🔥 Mostrar Spinner mientras carga
+                                                        // Mostrar Spinner mientras carga
                                                         <div className="text-center py-2">
                                                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mx-auto"></div>
                                                             <p className="text-[10px] mt-1 text-muted-foreground">Buscando bodegas...</p>
                                                         </div>
-                                                    ) : bodegasResultado.length > 0 ? ( // 🔥 CAMBIO CLAVE: Usar bodegasResultado
+                                                    ) : bodegasResultado.length > 0 ? ( // CAMBIO CLAVE: Usar bodegasResultado
                                                         bodegasResultado.map((bodega) => (
                                                             <DropdownMenuItem
                                                                 key={bodega.id}
@@ -418,7 +418,7 @@ export function OrderPanel({
                                                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mx-auto"></div>
                                                             <p className="text-[10px] mt-1 text-muted-foreground">Buscando clientes...</p>
                                                         </div>
-                                                    ) : clientesResultado.length > 0 ? ( // 🔥 CAMBIO CLAVE: Usar clientesResultado
+                                                    ) : clientesResultado.length > 0 ? ( // CAMBIO CLAVE: Usar clientesResultado
                                                         clientesResultado.map((cliente) => (
                                                             <DropdownMenuItem
                                                                 key={cliente.id}
@@ -431,11 +431,11 @@ export function OrderPanel({
                                                                 <div className="text-[10px] text-muted-foreground">{cliente.text}</div>
                                                             </DropdownMenuItem>
                                                         ))
-                                                    ) : searchCliente.trim() !== "" ? ( // 🔥 Muestra "Sin resultados" si buscó algo
+                                                    ) : searchCliente.trim() !== "" ? ( // Muestra "Sin resultados" si buscó algo
                                                         <div className="text-center py-2 text-muted-foreground text-[11px]">
                                                             Sin resultados
                                                         </div>
-                                                    ) : ( // 🔥 Muestra esto si la caja está vacía, para invitar a la búsqueda
+                                                    ) : ( // Muestra esto si la caja está vacía, para invitar a la búsqueda
                                                         <div className="text-center py-2 text-muted-foreground text-[11px]">
                                                             Empieza a escribir para buscar clientes...
                                                         </div>
@@ -541,10 +541,10 @@ export function OrderPanel({
                                     <span>{formatPrice(currentOrder.subtotal)}</span>
                                 </div>
 
-                                {/* 🔥 MOSTRAR DESGLOSE DE IVA POR TASAS */}
+                                {/* MOSTRAR DESGLOSE DE IVA POR TASAS */}
                                 {currentOrder?.iva_desglose && 
                                     Object.entries(currentOrder.iva_desglose)
-                                        // 🔥 MODIFICACIÓN CLAVE: Filtrar para que la 'tasa' sea mayor a 0
+                                        // MODIFICACIÓN CLAVE: Filtrar para que la 'tasa' sea mayor a 0
                                         .filter(([tasa]) => parseFloat(tasa) > 0)
                                         .map(([tasa, valor]) => (
                                             <div key={tasa} className="flex justify-between text-xs text-muted-foreground">
@@ -554,7 +554,7 @@ export function OrderPanel({
                                         ))
                                 }
 
-                                {/* 🔥 MOSTRAR RETENCIÓN SI EXISTE */}
+                                {/* MOSTRAR RETENCIÓN SI EXISTE */}
                                 {currentOrder.retencion > 0 && (
                                     <div className="flex justify-between text-xs text-muted-foreground">
                                         <span>Retención ({currentOrder.porcentaje_retencion}%) :</span>
