@@ -183,8 +183,22 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            className="pl-10 pr-10 text-base py-2 h-10 sm:text-lg sm:h-12"
                             autoFocus
+                            className="
+                                pl-10 pr-10
+                                text-base sm:text-lg
+                                py-2 h-10 sm:h-12
+                                bg-input
+                                border border-border
+                                shadow-sm
+                                transition-all duration-200
+                                focus:ring-2 focus:ring-primary/40
+                                focus:border-primary
+                                focus:shadow-md
+                                dark:bg-[#0f172a]-500
+                                dark:border-[#334155]
+                                dark:shadow-black/30
+                            "
                         />
                         {(searching || (searchTerm === "" && loading)) && (
                             <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -266,7 +280,7 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
                     ))}
                 </div>
             ) : (
-                <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,120px))] gap-1"> {/* AJUSTE DE RESPONSIVIDAD */}
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(138px,138px))] gap-2"> {/* AJUSTE DE RESPONSIVIDAD */}
                     {filteredProducts.map((product) => {
                         const totalStock = getTotalStock(product.inventarios)
                         const stockStatus = getStockStatus(totalStock)
@@ -274,7 +288,7 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
                         return (
                             <Card
                                 key={product.id}
-                                className="w-full max-w-[120px] cursor-pointer transition-all hover:shadow-lg group border overflow-hidden grid grid-rows-[100px_1fr] h-full"
+                                className="w-full max-w-[138px] cursor-pointer transition-all hover:shadow-lg group border overflow-hidden grid grid-rows-[100px_1fr] h-full"
                                 onClick={(e) => {
                                     e.stopPropagation()
                                     onProductSelect(product)
@@ -290,10 +304,6 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
                                             {product.familia.nombre}
                                         </div>
                                     )}
-
-                                    <div className="absolute top-1 right-1 text-xs text-white bg-black/40 px-2 py-0.5 rounded-sm z-10 font-mono backdrop-blur-[1px]">
-                                        {product.codigo}
-                                    </div>
 
                                     {product.imagen ? (
                                         <img
