@@ -352,6 +352,8 @@ function POSContent() {
 		var redondeoCalculo = 0
 		var valorBrutoCalculo = 0
 
+		console.log('backendOrder: ',backendOrder);
+
 		for (let index = 0; index < backendOrder.detalles.length; index++) {
 			const producto = backendOrder.detalles[index];
 
@@ -416,10 +418,10 @@ function POSContent() {
 			ubicacion_nombre: backendOrder.cliente?.nombre_completo.trim() || "Pedido Mostrador", 
 			productos: frontendItems,
 			subtotal: Number.parseFloat(backendOrder.subtotal),
-			iva: totalIva,
+			iva: Number.parseFloat(backendOrder.total_iva),
 			retencion: Number.parseFloat(backendOrder.total_rete_fuente),
 			porcentaje_retencion: Number.parseFloat(backendOrder.porcentaje_rete_fuente),
-			total: valorBrutoCalculo,
+			total: Number.parseFloat(backendOrder.total_factura),
 			fecha: backendOrder.created_at,
 			iva_desglose: ivaPorTasas,
 			estado: backendOrder.estado === 1 ? "pendiente" : "completado",
@@ -629,12 +631,16 @@ function POSContent() {
 			try {
 				const response = await apiClient.get('/pos/pedidos');
 
+
+
 				const backendOrders: BackendPedido[] = response.data.data || [];
 				const detailsOrder = response.data.data.length ? response.data.data[0].detalles : []
 				
 				const newOrders = backendOrders
 					.filter(o => o.estado === 1)
 					.map(mapBackendOrderToFrontend)
+
+				console.log('Pedidos cargados del backend:', newOrders);
 				
 				setOrders(newOrders)
 
@@ -1107,12 +1113,6 @@ function POSContent() {
 		}
 
 		totalProducto = Math.round(totalProducto * 100) / 100;
-
-		console.log('subTotal: ', subTotal);
-		console.log('totalPorCantidad: ', subTotal);
-		console.log('totalIva: ', subTotal);
-		console.log('totalDescuento: ', subTotal);
-		console.log('totalProducto: ', subTotal);
 
 		const updatedProducts = currentOrder.productos.map((item) => {
 			if (item.id_producto === productId) {

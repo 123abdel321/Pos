@@ -221,14 +221,13 @@ export function PaymentModal({ order, onPayment, onClose }: PaymentModalProps) {
 
     // Modificar el onChange del input para mantener el formato
     const handleInputChange = useCallback((value: string) => {
-        // Remover todos los puntos existentes
         const cleanValue = value.replace(/\./g, '')
 
-        // Verificar si es un número válido
         if (cleanValue === '' || /^\d+$/.test(cleanValue)) {
             const numberValue = cleanValue === '' ? 0 : parseInt(cleanValue, 10)
-            // Formatear el número con separadores de miles
-            setCurrentInputAmount(formatNumberWithCommas(numberValue))
+            setCurrentInputAmount(
+                numberValue === 0 ? '' : formatNumberWithCommas(numberValue)
+            )
         }
     }, [])
 
@@ -535,9 +534,9 @@ export function PaymentModal({ order, onPayment, onClose }: PaymentModalProps) {
                                             <div className="flex gap-3">
                                                 <div className="relative flex-1">
                                                     <Input
-                                                        type="number"
+                                                        type="text"
                                                         value={currentInputAmount}
-                                                        onChange={(e) => setCurrentInputAmount(e.target.value)}
+                                                        onChange={(e) => handleInputChange(e.target.value)}
                                                         placeholder="Monto en efectivo"
                                                         className="flex-1 text-lg h-11 pl-10 border-input focus:border-primary bg-input"
                                                     />
@@ -545,7 +544,7 @@ export function PaymentModal({ order, onPayment, onClose }: PaymentModalProps) {
                                                 </div>
                                                 <Button
                                                     onClick={handleManualAdd}
-                                                    disabled={!currentInputAmount || Number(currentInputAmount) <= 0}
+                                                    disabled={!currentInputAmount || parseFormattedNumber(currentInputAmount) <= 0}
                                                     className="gap-2 px-6 h-11 text-base shadow-md bg-primary text-primary-foreground hover:bg-primary/90"
                                                 >
                                                     <Plus className="h-4 w-4" />
