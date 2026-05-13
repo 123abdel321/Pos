@@ -7,14 +7,15 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Search, Package, Barcode } from "lucide-react"
+import { Search, Package, Barcode, Warehouse } from "lucide-react"
 import { Producto, Familia } from '@/types/producto'
 import apiClient from "@/app/api/apiClient"
 interface ProductGridProps {
     onProductSelect: (product: Producto, quantity?: number) => void
+    bodegaId: number | null
 }
 
-export function ProductGrid({ onProductSelect }: ProductGridProps) {
+export function ProductGrid({ onProductSelect, bodegaId }: ProductGridProps) {
     const [productos, setProductos] = useState<Producto[]>([])
     const [familias, setFamilias] = useState<Familia[]>([])
     const [filteredProducts, setFilteredProducts] = useState<Producto[]>([])
@@ -37,14 +38,26 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
             try {
                 setLoading(true)
 
+                const params: any = {}
+                if (bodegaId) {
+                    params.id_bodega = bodegaId
+                }
+
                 const familiasResponse = await apiClient.get('/familia/combo-familia')
                 const familiasData = familiasResponse.data.data || familiasResponse.data
                 setFamilias(Array.isArray(familiasData) ? familiasData : [])
 
-                const productosResponse = await apiClient.get('/producto/combo-producto')
-                const productosData = productosResponse.data.data || productosResponse.data
-                setProductos(Array.isArray(productosData) ? productosData : [])
-                setFilteredProducts(Array.isArray(productosData) ? productosData : [])
+                if (bodegaId) {
+                    const params = { id_bodega: bodegaId };
+                    const productosResponse = await apiClient.get('/producto/combo-producto', { params });
+                    const productosData = productosResponse.data.data || productosResponse.data;
+                    setProductos(Array.isArray(productosData) ? productosData : []);
+                    setFilteredProducts(Array.isArray(productosData) ? productosData : []);
+                } else {
+                    // Si no hay bodega, limpiar productos
+                    setProductos([]);
+                    setFilteredProducts([]);
+                }
 
             } catch (error) {
                 console.error('Error loading data:', error)
@@ -53,7 +66,6 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
                 setFilteredProducts([])
             } finally {
                 setLoading(false)
-
                 setTimeout(() => {
                     if (searchInputRef.current) {
                         searchInputRef.current.focus()
@@ -63,7 +75,7 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
         }
 
         loadInitialData()
-    }, [])
+    }, [bodegaId])
 
     // Lógica de búsqueda con debounce
     useEffect(() => {
@@ -71,7 +83,12 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
             if (!searchTerm.trim()) {
                 setSearching(true)
                 try {
-                    const response = await apiClient.get('/producto/combo-producto')
+                    const params: any = {}
+                    if (bodegaId) {
+                        params.id_bodega = bodegaId
+                    }
+
+                    const response = await apiClient.get('/producto/combo-producto', { params })
                     const data = response.data.data || response.data
                     setProductos(Array.isArray(data) ? data : [])
                 } catch (error) {
@@ -85,10 +102,12 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
 
             try {
                 setSearching(true)
-                const response = await apiClient.get('/producto/combo-producto', {
-                    params: { search: searchTerm }
-                })
+                const params: any = { search: searchTerm }
+                if (bodegaId) {
+                    params.id_bodega = bodegaId
+                }
 
+                const response = await apiClient.get('/producto/combo-producto', { params })
                 const data = response.data.data || response.data
                 setProductos(Array.isArray(data) ? data : [])
             } catch (error) {
@@ -103,7 +122,7 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
         }, 500)
 
         return () => clearTimeout(timeoutId)
-    }, [searchTerm])
+    }, [searchTerm, bodegaId])
 
     // Lógica de filtrado por categoría
     useEffect(() => {
@@ -165,6 +184,16 @@ export function ProductGrid({ onProductSelect }: ProductGridProps) {
 
     const getTotalStock = (inventarios: any[]) => {
         return inventarios.reduce((total, inv) => total + Number.parseFloat(inv.cantidad), 0)
+    }
+
+    if (!bodegaId) {
+        return (
+            <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+                <Warehouse className="h-16 w-16 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium mb-2">Selecciona una bodega</h3>
+                <p className="text-muted-foreground text-sm">Usa el selector en la barra superior.</p>
+            </div>
+        )
     }
 
     // FIX DE SINTAXIS APLICADO: El paréntesis de apertura se coloca

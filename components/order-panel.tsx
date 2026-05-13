@@ -18,18 +18,15 @@ import {
     Edit, 
     User,
     Search,
-    ChevronLeft, // Icono para colapsar
-    ChevronRight, // Icono para expandir
+    ChevronLeft,
+    ChevronRight,
     Warehouse,
     ListOrdered,
     ChevronDown,
     Printer
 } from "lucide-react"
 import { ProductEditModal } from "./product-edit-modal"
-
-// IMPORTAR TUS TIPOS (AJUSTA LA RUTA SI ES NECESARIO)
-import type { Order, OrderItem, Cliente, Bodega } from "@/app/page" // O usa "@/types/order"
-
+import type { Order, OrderItem, Cliente, Bodega } from "@/app/page"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -77,20 +74,19 @@ export function OrderPanel({
     const [clientesResultado, setClientesResultado] = useState<Cliente[]>([])
     const [editingProduct, setEditingProduct] = useState<OrderItem | null>(null)
 
+    // CAMBIO: Eliminado validationError porque ahora usamos deshabilitado directo
+
+    // (Los useEffect de búsqueda se mantienen igual)
     useEffect(() => {
         if (searchCliente.trim() === "") {
             setClientesResultado([])
             return
         }
-
         const delayDebounceFn = setTimeout(async () => {
             try {
                 setLoadingClientes(true)
-
                 const response = await apiClient.get('/nit/combo-nit', {
-                    params: {
-                        search: searchCliente
-                    }
+                    params: { search: searchCliente }
                 })
                 const data = response.data.data || response.data
                 setClientesResultado(Array.isArray(data) ? data : [])
@@ -101,7 +97,6 @@ export function OrderPanel({
                 setLoadingClientes(false)
             }
         }, 500)
-
         return () => clearTimeout(delayDebounceFn)
     }, [searchCliente])
 
@@ -110,14 +105,11 @@ export function OrderPanel({
             setBodegasResultado([])
             return
         }
-
         const delayDebounceFn = setTimeout(async () => {
             try {
                 setLoadingBodegas(true)
                 const response = await apiClient.get('/bodega/combo-bodega', {
-                    params: {
-                        search: searchBodega
-                    }
+                    params: { search: searchBodega }
                 })
                 const data = response.data.data || response.data
                 setBodegasResultado(Array.isArray(data) ? data : [])
@@ -132,7 +124,6 @@ export function OrderPanel({
     }, [searchBodega])
 
     const handlePrintOrder = (orderId: number | null) => {
-        // Reemplazar con su endpoint real de PDF
         if (orderId) {
             const pdfUrl = `https://app.portafolioerp.com/pos/pedido-print/${orderId}`;
             window.open(pdfUrl, '_blank');
@@ -152,7 +143,9 @@ export function OrderPanel({
         }
     }
 
-    const handleSelectBodega = async (bodega: Bodega) => {
+    // CAMBIO: Añadido handler para seleccionar bodega (aunque no se muestra en este componente, lo usará el padre)
+    // Si el padre no proporciona onUpdateBodega, esto no tendrá efecto.
+    const handleSelectBodega = (bodega: Bodega) => {
         setSearchBodega("")
         if (onUpdateBodega) {
             onUpdateBodega(bodega)
@@ -184,21 +177,29 @@ export function OrderPanel({
         setEditingProduct(null)
     }
 
-    // VISTA SIN ORDEN ACTIVA (Se mantiene la lógica, pero envuelta en el nuevo diseño de colapso)
-    const renderNoOrder = () => (
-        <div className="flex-1 flex items-center justify-center p-8">
-            <div className="text-center">
-                <ShoppingCart className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-foreground mb-2">No hay pedido activo</h3>
-                <Button onClick={onNewOrder} className="gap-2 btn-bg-info">
-                    <Plus className="h-4 w-4" />
-                    Nuevo Pedido
-                </Button>
-            </div>
-        </div>
-    )
+    // CAMBIO: Función de validación (solo lógica, no muestra error)
+    const isValidRequirements = (): boolean => {
+        return !!selectedBodega && !!selectedCliente;
+    };
 
-    // RENDERIZADO PRINCIPAL CON CLASES DE ANCHO DINÁMICO
+    // Handlers que validan
+    const handleNewOrder = () => {
+        if (isValidRequirements()) {
+            onNewOrder();
+        }
+    };
+
+    const handleCompleteOrder = () => {
+        if (isValidRequirements()) {
+            onCompleteOrder();
+        }
+    };
+
+    // Variables auxiliares para deshabilitar botones
+    const isMissingRequirements = !isValidRequirements();
+    const canAddProducts = currentOrder?.estado === 'pendiente';
+
+    // RENDERIZADO PRINCIPAL
     return (
         <>
             <div 
@@ -211,14 +212,14 @@ export function OrderPanel({
                 <div className="p-2 border-b border-border flex-shrink-0">
                     <div className="flex items-center justify-between">
                         {isExpanded && (
-                             <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2">
                                 <ListOrdered className="h-4 w-4 text-primary" />
                                 <h2 className="text-sm font-semibold text-foreground truncate max-w-[150px]">
-                                {currentOrder
-                                    ? currentOrder.ubicacion?.nombre ||
-                                    currentOrder.cliente?.nombre_completo ||
-                                    "Pedido Actual"
-                                    : "Pedido Actual"}
+                                    {currentOrder
+                                        ? currentOrder.ubicacion?.nombre ||
+                                          currentOrder.cliente?.nombre_completo ||
+                                          "Pedido Actual"
+                                        : "Pedido Actual"}
                                 </h2>
                                 {currentOrder?.id_backend && (
                                     <Badge variant="secondary" className="text-[15px] px-1 py-0 h-4">
@@ -227,8 +228,6 @@ export function OrderPanel({
                                 )}
                             </div>
                         )}
-                       
-                        {/* BOTÓN TOGGLE DE EXPANDIR/COLAPSAR */}
                         <Button
                             variant="ghost"
                             size="icon"
@@ -236,14 +235,89 @@ export function OrderPanel({
                             className={`h-7 w-7 p-0 ${isExpanded ? '' : 'mx-auto'}`}
                             title={isExpanded ? "Colapsar Vista" : "Expandir Vista"}
                         >
-                            {isExpanded ? (
-                                <ChevronRight className="h-4 w-4" />
-                            ) : (
-                                <ChevronLeft className="h-4 w-4" />
-                            )}
+                            {isExpanded ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
                         </Button>
                     </div>
                 </div>
+
+                {/* -------------------- SELECTOR DE CLIENTE (SIEMPRE VISIBLE CUANDO EXPANDIDO) -------------------- */}
+                {isExpanded && (
+                    <div className="p-2 border-b border-border flex-shrink-0">
+                        <div className="space-y-1">
+                            <label htmlFor="cliente-selector" className="text-[11px] font-medium">
+                                Cliente {!selectedCliente && <span className="text-destructive">*</span>}
+                            </label>
+                            {selectedCliente ? (
+                                <div className="flex items-center justify-between p-1 border rounded bg-muted/30">
+                                    <div className="flex items-center gap-1">
+                                        <User className="h-3 w-3 text-muted-foreground" />
+                                        <div className="text-[11px] leading-tight">
+                                            <div className="font-medium truncate max-w-[120px]">{selectedCliente.nombre_completo}</div>
+                                            <div className="text-[10px] text-muted-foreground truncate max-w-[120px]">
+                                                {selectedCliente.text || 'Cliente por defecto'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={handleRemoveCliente}
+                                        className="h-4 w-4 p-0 text-destructive hover:text-destructive"
+                                    >
+                                        <X className="h-3 w-3" />
+                                    </Button>
+                                </div>
+                            ) : (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="outline" className="w-full justify-between h-7 px-2 text-[11px]" id="cliente-selector">
+                                            <div className="flex items-center gap-1">
+                                                <User className="h-3 w-3" />
+                                                <span>Seleccionar cliente</span>
+                                            </div>
+                                            <ChevronDown className="h-3 w-3" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent className="w-64 p-1">
+                                        <div className="relative mb-1">
+                                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                                            <Input
+                                                placeholder="Buscar cliente..."
+                                                value={searchCliente}
+                                                onChange={(e) => setSearchCliente(e.target.value)}
+                                                className="pl-6 h-6 text-xs"
+                                            />
+                                        </div>
+                                        <div className="max-h-44 overflow-auto">
+                                            {loadingClientes ? (
+                                                <div className="text-center py-2">
+                                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mx-auto"></div>
+                                                    <p className="text-[10px] mt-1 text-muted-foreground">Buscando clientes...</p>
+                                                </div>
+                                            ) : clientesResultado.length > 0 ? (
+                                                clientesResultado.map((cliente) => (
+                                                    <DropdownMenuItem
+                                                        key={cliente.id}
+                                                        onClick={() => handleSelectCliente(cliente)}
+                                                        className="flex flex-col items-start p-2 mb-1 hover:bg-accent rounded"
+                                                    >
+                                                        <div className="font-medium text-[11px] leading-tight">{cliente.nombre_completo}</div>
+                                                        <div className="text-[10px] text-muted-foreground">{cliente.text}</div>
+                                                    </DropdownMenuItem>
+                                                ))
+                                            ) : searchCliente.trim() !== "" ? (
+                                                <div className="text-center py-2 text-muted-foreground text-[11px]">Sin resultados</div>
+                                            ) : (
+                                                <div className="text-center py-2 text-muted-foreground text-[11px]">Empieza a escribir para buscar clientes...</div>
+                                            )}
+                                        </div>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            )}
+                        </div>
+                        {/* Nota: No se incluye selector de bodega aquí por solicitud del usuario. La bodega debe seleccionarse fuera. */}
+                    </div>
+                )}
 
                 {/* -------------------- MODO COLAPSADO (SUMMARY) -------------------- */}
                 {!isExpanded && currentOrder && (
@@ -253,21 +327,19 @@ export function OrderPanel({
                                 {currentOrder.id_backend ? `#${currentOrder.id_backend}` : 'TEMP'}
                             </div>
                         </div>
-
                         <div className="text-center space-y-2 flex-shrink-0 w-full">
                             {currentOrder.productos.length} items
                         </div>
-
                         <div className="space-y-2 flex-shrink-0 w-full mb-17">
                             <div className="text-center text-[20px] font-bold text-primary transform -rotate-90 origin-center w-full my-6">
                                 {formatPrice(currentOrder.total)}
                             </div>
                             <Button
-                                onClick={onCompleteOrder}
-                                disabled={currentOrder.productos.length === 0}
+                                onClick={handleCompleteOrder}
+                                disabled={currentOrder.productos.length === 0 || isMissingRequirements}
                                 size="icon"
                                 className="w-10 h-10 p-0 btn-bg-gold"
-                                title="Pagar"
+                                title={isMissingRequirements ? "Selecciona cliente y bodega" : "Pagar"}
                             >
                                 <CreditCard className="h-4 w-4" />
                             </Button>
@@ -275,182 +347,10 @@ export function OrderPanel({
                     </div>
                 )}
                 
-                {/* -------------------- CONTENIDO PRINCIPAL (EXPANDIDO) -------------------- */}
+                {/* -------------------- CONTENIDO PRINCIPAL (EXPANDIDO) - SOLO SI HAY PEDIDO -------------------- */}
                 {currentOrder && isExpanded && (
-                    // CORRECCIÓN CLAVE: Usamos un DIV como contenedor Flex Column
-                    // para distribuir correctamente el espacio entre 2.1 (fijo), 2.2 (scroll) y 2.3 (fijo).
                     <div className="flex-1 flex flex-col min-h-0"> 
-                        
-                        {/* 2.1 Selectores de Cliente/Bodega - FLEX-SHRINK-0 (Altura Fija) */}
-                        <div className="p-2 border-b border-border flex-shrink-0">
-                            {/* Selector de Bodega y Cliente en grid */}
-                            <div className="grid grid-cols-2 gap-2">
-                                {/* Bodega */}
-                                <div className="space-y-1">
-                                    <label className="text-[11px] font-medium">Bodega</label>
-                                    {selectedBodega ? (
-                                        <div className="flex items-center justify-between p-1 border rounded bg-muted/30">
-                                            <div className="flex items-center gap-1">
-                                                <Warehouse className="h-3 w-3 text-muted-foreground" />
-                                                <div className="text-[11px] leading-tight">
-                                                    <div className="font-medium truncate max-w-[80px]">{selectedBodega.codigo}</div>
-                                                    <div className="text-[10px] text-muted-foreground truncate max-w-[80px]">
-                                                        {selectedBodega.nombre}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={handleRemoveBodega}
-                                                className="h-4 w-4 p-0 text-destructive hover:text-destructive"
-                                            >
-                                                <X className="h-3 w-3" />
-                                            </Button>
-                                        </div>
-                                    ) : (
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="outline" className="w-full justify-between h-7 px-2 text-[11px]" id="cliente-selector">
-                                                    <div className="flex items-center gap-1">
-                                                        <Warehouse className="h-3 w-3" />
-                                                        <span>Bodega</span>
-                                                    </div>
-                                                    <ChevronDown className="h-3 w-3" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent className="w-64 p-1">
-                                                <div className="relative mb-1">
-                                                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-                                                    <Input
-                                                        placeholder="Buscar bodega..."
-                                                        value={searchBodega}
-                                                        onChange={(e) => setSearchBodega(e.target.value)}
-                                                        className="pl-6 h-6 text-xs"
-                                                    />
-                                                </div>
-                                                <div className="max-h-44 overflow-auto">
-                                                    {loadingBodegas ? (
-                                                        // Mostrar Spinner mientras carga
-                                                        <div className="text-center py-2">
-                                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mx-auto"></div>
-                                                            <p className="text-[10px] mt-1 text-muted-foreground">Buscando bodegas...</p>
-                                                        </div>
-                                                    ) : bodegasResultado.length > 0 ? ( // CAMBIO CLAVE: Usar bodegasResultado
-                                                        bodegasResultado.map((bodega) => (
-                                                            <DropdownMenuItem
-                                                                key={bodega.id}
-                                                                onClick={() => handleSelectBodega(bodega)}
-                                                                className="flex flex-col items-start p-2 mb-1 hover:bg-accent rounded"
-                                                            >
-                                                                <div className="font-medium text-[11px] leading-tight">
-                                                                    {bodega.codigo} - {bodega.nombre}
-                                                                </div>
-                                                                <div className="text-[10px] text-muted-foreground">{bodega.ubicacion}</div>
-                                                            </DropdownMenuItem>
-                                                        ))
-                                                    ) : searchBodega.trim() !== "" ? (
-                                                        // Si no hay resultados y la caja de búsqueda NO está vacía
-                                                        <div className="text-center py-2 text-muted-foreground text-[11px]">
-                                                            Sin resultados
-                                                        </div>
-                                                    ) : (
-                                                        // Si la caja de búsqueda ESTÁ vacía
-                                                        <div className="text-center py-2 text-muted-foreground text-[11px] italic">
-                                                            Empieza a escribir para buscar bodegas...
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    )}
-                                </div>
-
-                                {/* Cliente */}
-                                <div className="space-y-1">
-                                    <label htmlFor="cliente-selector" className="text-[11px] font-medium">Cliente</label>
-                                    {selectedCliente ? (
-                                        <div className="flex items-center justify-between p-1 border rounded bg-muted/30">
-                                            <div className="flex items-center gap-1">
-                                                <User className="h-3 w-3 text-muted-foreground" />
-                                                <div className="text-[11px] leading-tight">
-                                                    <div className="font-medium truncate max-w-[120px]">{selectedCliente.nombre_completo}</div>
-                                                    <div className="text-[10px] text-muted-foreground truncate max-w-[120px]">
-                                                        {selectedCliente.text || 'Cliente por defecto'}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={handleRemoveCliente}
-                                                className="h-4 w-4 p-0 text-destructive hover:text-destructive"
-                                            >
-                                                <X className="h-3 w-3" />
-                                            </Button>
-                                        </div>
-                                    ) : (
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="outline" className="w-full justify-between h-7 px-2 text-[11px]" id="cliente-selector">
-                                                    <div className="flex items-center gap-1">
-                                                        <User className="h-3 w-3" />
-                                                        <span>Selecionar cliente</span>
-                                                    </div>
-                                                    <ChevronDown className="h-3 w-3" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent className="w-64 p-1">
-                                                <div className="relative mb-1">
-                                                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-                                                    <Input
-                                                        placeholder="Buscar cliente..."
-                                                        value={searchCliente}
-                                                        onChange={(e) => setSearchCliente(e.target.value)}
-                                                        className="pl-6 h-6 text-xs"
-                                                    />
-                                                </div>
-
-
-                                                <div className="max-h-44 overflow-auto">
-                                                    {loadingClientes ? (
-                                                        <div className="text-center py-2">
-                                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mx-auto"></div>
-                                                            <p className="text-[10px] mt-1 text-muted-foreground">Buscando clientes...</p>
-                                                        </div>
-                                                    ) : clientesResultado.length > 0 ? ( // CAMBIO CLAVE: Usar clientesResultado
-                                                        clientesResultado.map((cliente) => (
-                                                            <DropdownMenuItem
-                                                                key={cliente.id}
-                                                                onClick={() => handleSelectCliente(cliente)}
-                                                                className="flex flex-col items-start p-2 mb-1 hover:bg-accent rounded"
-                                                            >
-                                                                <div className="font-medium text-[11px] leading-tight">
-                                                                    {cliente.nombre_completo}
-                                                                </div>
-                                                                <div className="text-[10px] text-muted-foreground">{cliente.text}</div>
-                                                            </DropdownMenuItem>
-                                                        ))
-                                                    ) : searchCliente.trim() !== "" ? ( // Muestra "Sin resultados" si buscó algo
-                                                        <div className="text-center py-2 text-muted-foreground text-[11px]">
-                                                            Sin resultados
-                                                        </div>
-                                                    ) : ( // Muestra esto si la caja está vacía, para invitar a la búsqueda
-                                                        <div className="text-center py-2 text-muted-foreground text-[11px]">
-                                                            Empieza a escribir para buscar clientes...
-                                                        </div>
-                                                    )}
-                                                </div>
-
-
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* 2.2 Order Items - FLEX-1 OVERFLOW-Y-AUTO (Ahora maneja el scroll) */}
+                        {/* 2.2 Order Items - FLEX-1 OVERFLOW-Y-AUTO */}
                         <div className="flex-1 overflow-y-auto">
                             <div className="p-2">
                                 {currentOrder.productos.length === 0 ? (
@@ -480,7 +380,7 @@ export function OrderPanel({
                                                             </div>
                                                         )}
                                                     </div>
-                                                    { currentOrder.estado == 'pendiente' ? 
+                                                    {canAddProducts && (
                                                         <div className="flex gap-1">
                                                             <Button
                                                                 variant="ghost"
@@ -498,12 +398,11 @@ export function OrderPanel({
                                                             >
                                                                 <Trash2 className="h-3 w-3" />
                                                             </Button>
-                                                        </div> : ''
-                                                    }
+                                                        </div>
+                                                    )}
                                                 </div>
-
                                                 <div className="flex items-center justify-between">
-                                                    { currentOrder.estado == 'pendiente' ? 
+                                                    {canAddProducts && (
                                                         <div className="flex items-center gap-1">
                                                             <Button
                                                                 variant="outline"
@@ -522,8 +421,8 @@ export function OrderPanel({
                                                             >
                                                                 <Plus className="h-3 w-3 text-success" />
                                                             </Button>
-                                                        </div> : ''
-                                                    }
+                                                        </div>
+                                                    )}
                                                     <div className="text-xs font-semibold">{formatPrice(item.total)}</div>
                                                 </div>
                                             </Card>
@@ -533,18 +432,15 @@ export function OrderPanel({
                             </div>
                         </div>
 
-                        {/* 2.3 Order Summary & Actions - FLEX-SHRINK-0 (Altura Fija Abajo) */}
+                        {/* 2.3 Order Summary & Actions */}
                         <div className="border-t border-border p-2 flex-shrink-0 bg-background">
                             <div className="space-y-1 mb-2">
                                 <div className="flex justify-between text-xs">
                                     <span>Subtotal:</span>
                                     <span>{formatPrice(currentOrder.subtotal)}</span>
                                 </div>
-
-                                {/* MOSTRAR DESGLOSE DE IVA POR TASAS */}
                                 {currentOrder?.iva_desglose && 
                                     Object.entries(currentOrder.iva_desglose)
-                                        // MODIFICACIÓN CLAVE: Filtrar para que la 'tasa' sea mayor a 0
                                         .filter(([tasa]) => parseFloat(tasa) > 0)
                                         .map(([tasa, valor]) => (
                                             <div key={tasa} className="flex justify-between text-xs text-muted-foreground">
@@ -553,15 +449,12 @@ export function OrderPanel({
                                             </div>
                                         ))
                                 }
-
-                                {/* MOSTRAR RETENCIÓN SI EXISTE */}
                                 {currentOrder.retencion > 0 && (
                                     <div className="flex justify-between text-xs text-muted-foreground">
                                         <span>Retención ({currentOrder.porcentaje_retencion}%) :</span>
                                         <span>{formatPrice(currentOrder.retencion)}</span>
                                     </div>
                                 )}
-
                                 <Separator />
                                 <div className="flex justify-between text-sm font-bold">
                                     <span>Total:</span>
@@ -570,83 +463,102 @@ export function OrderPanel({
                             </div>
 
                             <div className="space-y-1 mb-17">
-                                { currentOrder.estado == 'pendiente' ?
+                                {canAddProducts && (
                                     <>
-                                    <Button
-                                        onClick={onCompleteOrder}
-                                        disabled={currentOrder.productos.length === 0}
-                                        className="w-full gap-1 btn-bg-gold h-9"
-                                    >
-                                        <CreditCard className="h-4 w-4" />
-                                        Pagar ({formatPrice(currentOrder.total)})
-                                    </Button>
-
-                                    <div className="flex gap-2">
                                         <Button
-                                            onClick={() => handlePrintOrder(currentOrder.id_backend)}
-                                            disabled={!currentOrder.id_backend}
-                                            variant="outline"
-                                            className="w-1/3 gap-1 h-8"
-                                            title="Imprimir pedido"
+                                            onClick={handleCompleteOrder}
+                                            disabled={currentOrder.productos.length === 0 || isMissingRequirements}
+                                            className="w-full gap-1 btn-bg-gold h-9"
+                                            title={
+                                                isMissingRequirements
+                                                    ? "Selecciona cliente y bodega para continuar"
+                                                    : currentOrder.productos.length === 0
+                                                    ? "Agrega productos para pagar"
+                                                    : ""
+                                            }
                                         >
-                                            <Printer className="h-4 w-4" />
+                                            <CreditCard className="h-4 w-4" />
+                                            Pagar ({formatPrice(currentOrder.total)})
                                         </Button>
-                                        <Button
-                                            variant="outline"
-                                            onClick={onNewOrder}
-                                            className="w-1/2 gap-1 h-8"
-                                        >
-                                            <Plus className="h-4 w-4" />
-                                            Nuevo
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            onClick={onCancelOrder}
-                                            className="w-1/2 gap-1 h-8 text-destructive hover:text-destructive"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                            Cancelar
-                                        </Button>
-                                    </div>
+                                        <div className="flex gap-2">
+                                            <Button
+                                                onClick={() => handlePrintOrder(currentOrder.id_backend)}
+                                                disabled={!currentOrder.id_backend}
+                                                variant="outline"
+                                                className="w-1/3 gap-1 h-8"
+                                                title="Imprimir pedido"
+                                            >
+                                                <Printer className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                onClick={handleNewOrder}  // CAMBIO: usa handleNewOrder para validar
+                                                className="w-1/2 gap-1 h-8"
+                                                disabled={isMissingRequirements}  // CAMBIO: deshabilitar si falta requisito
+                                                title={isMissingRequirements ? "Selecciona cliente y bodega primero" : ""}
+                                            >
+                                                <Plus className="h-4 w-4" />
+                                                Nuevo
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                onClick={onCancelOrder}
+                                                className="w-1/2 gap-1 h-8 text-destructive hover:text-destructive"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                                Cancelar
+                                            </Button>
+                                        </div>
                                     </>
-                                    : ''
-                                }
-
+                                )}
                             </div>
                         </div>
                     </div>
                 )}
 
+                {/* -------------------- ESTADO SIN PEDIDO ACTIVO (EXPANDIDO) -------------------- */}
                 {!currentOrder && isExpanded && (
                     <div className="flex-1 flex items-center justify-center min-h-0">
                         <div className="text-center">
                             <ShoppingCart className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                             <h3 className="text-lg font-medium text-foreground mb-2">No hay pedido activo</h3>
-                            <p className="text-muted-foreground mb-6">Selecciona una ubicación o inicia una venta</p>
-                            <Button onClick={onNewOrder} className="gap-2 btn-bg-info">
-                            <Plus className="h-4 w-4" />
-                            Nuevo Pedido
+                            <p className="text-muted-foreground mb-6">
+                                {isMissingRequirements
+                                    ? "Selecciona un cliente y una bodega para comenzar"
+                                    : "Presiona 'Nuevo Pedido' para iniciar una venta"}
+                            </p>
+                            <Button
+                                onClick={handleNewOrder}
+                                className="gap-2 btn-bg-info"
+                                disabled={isMissingRequirements}
+                                title={isMissingRequirements ? "Primero selecciona cliente y bodega" : ""}
+                            >
+                                <Plus className="h-4 w-4" />
+                                Nuevo Pedido
                             </Button>
                         </div>
                     </div>
                 )}
 
+                {/* -------------------- ESTADO SIN PEDIDO Y COLAPSADO -------------------- */}
                 {!isExpanded && !currentOrder && (
                     <div className="flex-1 flex flex-col justify-center items-center p-2">
                         <ShoppingCart className="h-8 w-8 text-muted-foreground/50 mb-8" />
-                        <Button 
-                            onClick={onNewOrder} 
-                            size="icon" 
-                            className="w-10 h-10 p-0 text-xs bg-muted text-muted-foreground hover:bg-muted/70"
-                            title="Nuevo Pedido"
+                        <Button
+                            variant="outline"
+                            onClick={handleNewOrder}
+                            className="w-1/2 gap-1 h-8"
+                            disabled={isMissingRequirements}
+                            title={isMissingRequirements ? "Selecciona cliente y bodega" : ""}
                         >
                             <Plus className="h-4 w-4" />
+                            Nuevo
                         </Button>
                     </div>
                 )}
             </div>
 
-            {/* Product Edit Modal (Sin cambios) */}
+            {/* Product Edit Modal */}
             {editingProduct && (
                 <ProductEditModal
                     product={editingProduct}

@@ -20,6 +20,9 @@ import {
 	LogOut, 
 	Menu,
 	User,
+	Warehouse,
+	ChevronDown,
+	Search,
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import ProtectedRoute from "@/components/sistem/ProtectedRoute"
@@ -34,6 +37,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { OrdersManagerPanel } from "@/components/OrdersManagerPanel" 
+import { Input } from "@/components/ui/input";
 
 // --- INTERFACES ---
 export interface Product {
@@ -211,7 +215,6 @@ function POSContent() {
 	const [showPaymentModal, setShowPaymentModal] = useState(false) 
 	const [currentOrder, setCurrentOrder] = useState<Order | null>(null)
 	const [loadingOrderId, setLoadingOrderId] = useState<string | null>(null)
-	const [selectedBodega, setSelectedBodega] = useState<Bodega | null>(null)
 	const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null)
 	const [selectedLocation, setSelectedLocation] = useState<Ubicacion | null>(null);
 	// NUEVOS ESTADOS PARA LA CONFIGURACIÓN
@@ -221,6 +224,14 @@ function POSContent() {
 	const [bodegaDefecto, setBodegaDefecto] = useState<Bodega | null>(null)
 	const [porcentajeRetencion, setPorcentajeRetencion] = useState<number>(0)
 	const [validationConfig, setValidationConfig] = useState<ValidationConfig | null>(null)
+
+	// Búsqueda de bodegas para el selector del header
+	const [allBodegas, setAllBodegas] = useState<Bodega[]>([]);
+	const [bodegasResultado, setBodegasResultado] = useState<Bodega[]>([]);
+	const [searchBodega, setSearchBodega] = useState('');
+	const [loadingBodegas, setLoadingBodegas] = useState(false);
+	const [selectedBodega, setSelectedBodega] = useState<Bodega | null>(null);
+
 	// MOSTRAR UBICACIONES ACTIVAS
 	const occupiedLocationIds = useMemo(() => {
 		return orders
@@ -228,6 +239,42 @@ function POSContent() {
 			.map(o => o.id_ubicacion!)
 			.filter((value, index, self) => self.indexOf(value) === index); // Obtener únicos
 	}, [orders]);
+
+	//CARGAR TODAS LAS BODEGAS AL INICIAR COMPONENTE
+	useEffect(() => {
+		const fetchBodegas = async () => {
+			setLoadingBodegas(true);
+			try {
+			const response = await apiClient.get('/bodega/combo-bodega'); // tu endpoint
+			const data = response.data.data || response.data;
+			const bodegasList = Array.isArray(data) ? data : [];
+			setAllBodegas(bodegasList);
+			setBodegasResultado(bodegasList); // inicialmente mostrar todas
+			} catch (error) {
+			console.error('Error cargando bodegas:', error);
+			setAllBodegas([]);
+			setBodegasResultado([]);
+			} finally {
+			setLoadingBodegas(false);
+			}
+		};
+		fetchBodegas();
+	}, []);
+
+	//FILTRAR LOCALMENTE LAS BODEGAS
+	useEffect(() => {
+		if (!searchBodega.trim()) {
+			setBodegasResultado(allBodegas);
+			return;
+		}
+		const lowerSearch = searchBodega.toLowerCase();
+		const filtered = allBodegas.filter(bodega =>
+			bodega.codigo?.toLowerCase().includes(lowerSearch) ||
+			bodega.nombre?.toLowerCase().includes(lowerSearch) ||
+			bodega.ubicacion?.toLowerCase().includes(lowerSearch)
+		);
+		setBodegasResultado(filtered);
+	}, [searchBodega, allBodegas]);
 
 	// CARGAR CONFIGURACIÓN AL INICIAR
 	useEffect(() => {
@@ -252,6 +299,30 @@ function POSContent() {
 
 		loadValidationConfig()
 	}, [])
+
+	// Efecto para buscar bodegas en el header
+	useEffect(() => {
+		if (searchBodega.trim() === "") {
+			setBodegasResultado([])
+			return
+		}
+		const delayDebounceFn = setTimeout(async () => {
+			try {
+			setLoadingBodegas(true)
+			const response = await apiClient.get('/bodega/combo-bodega', {
+				params: { search: searchBodega }
+			})
+			const data = response.data.data || response.data
+			setBodegasResultado(Array.isArray(data) ? data : [])
+			} catch (error) {
+			console.error('Error searching bodegas:', error)
+			setBodegasResultado([])
+			} finally {
+			setLoadingBodegas(false)
+			}
+		}, 500)
+		return () => clearTimeout(delayDebounceFn)
+	}, [searchBodega])
 
 	const handleLogout = () => {
 		logout();
@@ -644,29 +715,8 @@ function POSContent() {
 				
 				setOrders(newOrders)
 
-				const bodega = newOrders[0].bodega;
 				const cliente = newOrders[0].cliente;
 				const ubicacion = newOrders[0].ubicacion;
-
-				if (bodega) {
-					const dataBodega = {
-						id: bodega ? bodega.id : null,
-						codigo: bodega ? bodega.codigo : null,
-						nombre: bodega ? bodega.nombre : null,
-						ubicacion: bodega ? bodega.ubicacion : null,
-						id_centro_costos: bodega ? bodega.id_centro_costos : null,
-						id_responsable: bodega ? bodega.id_responsable : null,
-						id_cuenta_cartera: bodega ? bodega.id_cuenta_cartera : null,
-						consecutivo: bodega ? bodega.consecutivo : null,
-						consecutivo_parqueadero: bodega ? bodega.consecutivo_parqueadero : null,
-						created_by: bodega ? bodega.created_by : null,
-						updated_by: bodega ? bodega.updated_by : null,
-						created_at: bodega ? bodega.created_at : null,
-						updated_at: bodega ? bodega.updated_at : null,
-						text: bodega ? bodega.codigo+' - '+bodega.nombre : null,
-					}
-					setSelectedBodega(dataBodega)
-				}
 
 				if (cliente) {
 					const dataCliente = {
@@ -1314,144 +1364,204 @@ function POSContent() {
 					
 					{/* SECCIÓN IZQUIERDA: Marca & Status */}
 					<div className="flex items-center gap-6"> 
-					<div className="flex items-center gap-3">
-						{empresa?.logo ? (
-						<div className="relative flex-shrink-0">
-							<div className="absolute inset-0 bg-primary/20 rounded-lg blur-[2px]" />
-							<img 
-								src={
-									empresa.logo.startsWith('http') 
-									? empresa.logo 
-									: `https://porfaolioerpbucket.nyc3.digitaloceanspaces.com/${empresa.logo.replace(/^\//, '')}`
-								} 
-								alt={empresa.razon_social}
-								className="relative h-8 w-8 rounded-lg object-cover border border-white/20 shadow-sm ring-1 ring-border/50"
-							/>
-						</div>
-						) : (
-						<div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20 shadow-inner">
-							<span className="text-xs font-black text-primary italic">
-							{empresa?.razon_social?.charAt(0) || 'P'}
-							</span>
-						</div>
-						)}
-						
-						<div className="flex flex-col -space-y-0.5">
-						<h1 className="text-sm font-bold tracking-tight text-foreground flex items-center gap-1.5">
-							{empresa?.razon_social || "POS SYSTEM"}
-							<span className="h-1 w-1 rounded-full bg-green-500 animate-pulse" title="Sistema Activo" />
-						</h1>
-						<div className="flex items-center gap-2">
-							<span className="text-[10px] font-bold text-muted-foreground/60 tracking-[0.05em] uppercase">
-								SISTEMA POS
-							</span>
-							{ivaIncluido && (
-							<div className="flex items-center">
-								<span className="text-muted-foreground/30 text-[10px] mr-1.5">•</span>
-								<span className="text-[9px] font-bold leading-none text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded-[4px] uppercase tracking-tighter">
-								IVA INCLUIDO
+						<div className="flex items-center gap-3">
+							{empresa?.logo ? (
+							<div className="relative flex-shrink-0">
+								<div className="absolute inset-0 bg-primary/20 rounded-lg blur-[2px]" />
+								<img 
+									src={
+										empresa.logo.startsWith('http') 
+										? empresa.logo 
+										: `https://porfaolioerpbucket.nyc3.digitaloceanspaces.com/${empresa.logo.replace(/^\//, '')}`
+									} 
+									alt={empresa.razon_social}
+									className="relative h-8 w-8 rounded-lg object-cover border border-white/20 shadow-sm ring-1 ring-border/50"
+								/>
+							</div>
+							) : (
+							<div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20 shadow-inner">
+								<span className="text-xs font-black text-primary italic">
+								{empresa?.razon_social?.charAt(0) || 'P'}
 								</span>
 							</div>
 							)}
+							
+							<div className="flex flex-col -space-y-0.5">
+								<h1 className="text-sm font-bold tracking-tight text-foreground flex items-center gap-1.5">
+									{empresa?.razon_social || "POS SYSTEM"}
+									<span className="h-1 w-1 rounded-full bg-green-500 animate-pulse" title="Sistema Activo" />
+								</h1>
+								<div className="flex items-center gap-2">
+									<span className="text-[10px] font-bold text-muted-foreground/60 tracking-[0.05em] uppercase">
+										SISTEMA POS
+									</span>
+									{ivaIncluido && (
+									<div className="flex items-center">
+										<span className="text-muted-foreground/30 text-[10px] mr-1.5">•</span>
+										<span className="text-[9px] font-bold leading-none text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded-[4px] uppercase tracking-tighter">
+										IVA INCLUIDO
+										</span>
+									</div>
+									)}
+								</div>
+
+							</div>
 						</div>
-						</div>
-					</div>
 					</div>
 
 					{/* SECCIÓN DERECHA: Acciones & Perfil Rápido */}
 					<div className="flex items-center gap-2">
+
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<Button variant="outline" size="sm" className="h-9 gap-1">
+								<Warehouse className="h-4 w-4" />
+								{selectedBodega ? (
+									<span className="max-w-[100px] truncate text-xs">
+									{selectedBodega.codigo} - {selectedBodega.nombre}
+									</span>
+								) : (
+									<span className="text-xs">Bodega</span>
+								)}
+								<ChevronDown className="h-3 w-3" />
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent className="w-64 p-1">
+								<div className="relative mb-1">
+								<Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+								<Input
+									placeholder="Buscar bodega..."
+									value={searchBodega}
+									onChange={(e) => setSearchBodega(e.target.value)}
+									className="pl-6 h-6 text-xs"
+								/>
+								</div>
+								<div className="max-h-44 overflow-auto">
+									{loadingBodegas ? (
+										<div className="text-center py-2">
+										<div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mx-auto"></div>
+										<p className="text-[10px] mt-1 text-muted-foreground">Cargando bodegas...</p>
+										</div>
+									) : bodegasResultado.length > 0 ? (
+										bodegasResultado.map((bodega) => (
+										<DropdownMenuItem
+											key={bodega.id}
+											onClick={() => {
+											setSearchBodega("");
+											handleUpdateBodega(bodega);
+											}}
+											className="flex flex-col items-start p-2 mb-1"
+										>
+											<div className="font-medium text-[11px] leading-tight">
+											{bodega.codigo} - {bodega.nombre}
+											</div>
+											<div className="text-[10px] text-muted-foreground">{bodega.ubicacion}</div>
+										</DropdownMenuItem>
+										))
+									) : (
+										// Si no hay bodegas en la lista completa o el filtro no devuelve nada
+										<div className="text-center py-2 text-muted-foreground text-[11px]">
+										{allBodegas.length === 0
+											? "No tiene bodegas asignadas"
+											: "Sin resultados"}
+										</div>
+									)}
+								</div>
+							</DropdownMenuContent>
+						</DropdownMenu>
 					
-					{/* Indicador de Pedidos Pendientes (Fuera del menú para visibilidad inmediata) */}
-					<Button
-						variant="ghost"
-						size="sm"
-						onClick={() => setShowOrdersTable(true)}
-						className="h-9 px-3 gap-2 text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all hidden md:flex"
-					>
-						<Table className="h-4 w-4" />
-						<span className="text-xs font-semibold">Pedidos</span>
-						<span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-black text-primary-foreground">
-						{orders.filter((o) => o.estado === "pendiente").length}
-						</span>
-					</Button>
-
-					<div className="w-[1px] h-5 bg-border/60 mx-1 hidden sm:block" />
-
-					{/* Botón de Tema (Icono más fino) */}
-					<Button
-						variant="ghost"
-						size="icon"
-						onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-						className="h-8 w-8 rounded-full text-muted-foreground hover:bg-accent transition-transform active:scale-95"
-					>
-						{theme === "dark" ? <Sun className="h-[1.1rem] w-[1.1rem]" /> : <Moon className="h-[1.1rem] w-[1.1rem]" />}
-					</Button>
-
-					{/* Menú de Usuario con Avatar */}
-					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-						<Button 
-							variant="ghost" 
-							className="h-9 pl-1 pr-2 gap-2 rounded-full border border-transparent hover:border-border hover:bg-muted/50 transition-all"
+						{/* Indicador de Pedidos Pendientes (Fuera del menú para visibilidad inmediata) */}
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={() => setShowOrdersTable(true)}
+							className="h-9 px-3 gap-2 text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all hidden md:flex"
 						>
-							<div className="relative h-8 w-8">
-								{/* Sombra base */}
-								<div className="absolute inset-0 rounded-full bg-primary/30 blur-[3px] opacity-60"></div>
-								
-								{/* Bola 3D */}
-								<div className="relative h-8 w-8 rounded-full bg-gradient-to-br from-primary/25 via-primary/30 to-primary/20 
-												border-t border-primary/40 border-r border-primary/30 
-												border-b border-primary/10 border-l border-primary/20
-												shadow-[inset_1px_1px_2px_rgba(255,255,255,0.3),inset_-1px_-1px_2px_rgba(0,0,0,0.1)] 
-												flex items-center justify-center">
+							<Table className="h-4 w-4" />
+							<span className="text-xs font-semibold">Pedidos</span>
+							<span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-black text-primary-foreground">
+							{orders.filter((o) => o.estado === "pendiente").length}
+							</span>
+						</Button>
+
+						<div className="w-[1px] h-5 bg-border/60 mx-1 hidden sm:block" />
+
+						{/* Botón de Tema (Icono más fino) */}
+						<Button
+							variant="ghost"
+							size="icon"
+							onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+							className="h-8 w-8 rounded-full text-muted-foreground hover:bg-accent transition-transform active:scale-95"
+						>
+							{theme === "dark" ? <Sun className="h-[1.1rem] w-[1.1rem]" /> : <Moon className="h-[1.1rem] w-[1.1rem]" />}
+						</Button>
+
+						{/* Menú de Usuario con Avatar */}
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+							<Button 
+								variant="ghost" 
+								className="h-9 pl-1 pr-2 gap-2 rounded-full border border-transparent hover:border-border hover:bg-muted/50 transition-all"
+							>
+								<div className="relative h-8 w-8">
+									{/* Sombra base */}
+									<div className="absolute inset-0 rounded-full bg-primary/30 blur-[3px] opacity-60"></div>
 									
-									{/* Brillo */}
-									<div className="absolute top-1 left-1 h-2 w-2 bg-white/25 rounded-full blur-[1px]"></div>
-									
-									{/* Texto */}
-									<span className="text-xs font-black">
-									{user?.firstname ? user.firstname.slice(0, 2).toUpperCase() : 'US'}
+									{/* Bola 3D */}
+									<div className="relative h-8 w-8 rounded-full bg-gradient-to-br from-primary/25 via-primary/30 to-primary/20 
+													border-t border-primary/40 border-r border-primary/30 
+													border-b border-primary/10 border-l border-primary/20
+													shadow-[inset_1px_1px_2px_rgba(255,255,255,0.3),inset_-1px_-1px_2px_rgba(0,0,0,0.1)] 
+													flex items-center justify-center">
+										
+										{/* Brillo */}
+										<div className="absolute top-1 left-1 h-2 w-2 bg-white/25 rounded-full blur-[1px]"></div>
+										
+										{/* Texto */}
+										<span className="text-xs font-black">
+										{user?.firstname ? user.firstname.slice(0, 2).toUpperCase() : 'US'}
+										</span>
+									</div>
+									</div>
+								<Menu className="h-3.5 w-3.5 text-muted-foreground" />
+							</Button>
+							</DropdownMenuTrigger>
+							
+							<DropdownMenuContent align="end" className="w-64 p-1.5 shadow-2xl border-border/80 ring-1 ring-black/5">
+							<div className="px-3 py-3 mb-1 bg-gradient-to-b from-muted/50 to-transparent rounded-lg border border-border/40">
+								<p className="text-[9px] font-bold text-muted-foreground/70 uppercase tracking-widest mb-2">Sesión Iniciada</p>
+								<div className="flex items-center gap-3">
+								<div className="flex flex-col min-w-0">
+									<span className="text-sm font-bold truncate text-foreground leading-none">
+									{user?.username || 'Usuario'}
+									</span>
+									<span className="text-[11px] text-muted-foreground truncate mt-1">
+									{user?.email || 'admin@sistema.com'}
 									</span>
 								</div>
 								</div>
-							<Menu className="h-3.5 w-3.5 text-muted-foreground" />
-						</Button>
-						</DropdownMenuTrigger>
-						
-						<DropdownMenuContent align="end" className="w-64 p-1.5 shadow-2xl border-border/80 ring-1 ring-black/5">
-						<div className="px-3 py-3 mb-1 bg-gradient-to-b from-muted/50 to-transparent rounded-lg border border-border/40">
-							<p className="text-[9px] font-bold text-muted-foreground/70 uppercase tracking-widest mb-2">Sesión Iniciada</p>
-							<div className="flex items-center gap-3">
-							<div className="flex flex-col min-w-0">
-								<span className="text-sm font-bold truncate text-foreground leading-none">
-								{user?.username || 'Usuario'}
-								</span>
-								<span className="text-[11px] text-muted-foreground truncate mt-1">
-								{user?.email || 'admin@sistema.com'}
-								</span>
 							</div>
-							</div>
-						</div>
-						
-						<DropdownMenuItem 
-							onClick={() => setShowOrdersTable(true)}
-							className="md:hidden rounded-md py-2 px-3 focus:bg-primary/5 cursor-pointer"
-						>
-							<Table className="h-4 w-4 mr-2 text-muted-foreground" />
-							<span className="text-sm font-medium">Gestión de Pedidos</span>
-						</DropdownMenuItem>
+							
+							<DropdownMenuItem 
+								onClick={() => setShowOrdersTable(true)}
+								className="md:hidden rounded-md py-2 px-3 focus:bg-primary/5 cursor-pointer"
+							>
+								<Table className="h-4 w-4 mr-2 text-muted-foreground" />
+								<span className="text-sm font-medium">Gestión de Pedidos</span>
+							</DropdownMenuItem>
 
-						<DropdownMenuSeparator className="opacity-50" />
-						
-						<DropdownMenuItem 
-							onClick={handleLogout}
-							className="rounded-md py-2 px-3 text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer font-medium"
-						>
-							<LogOut className="h-4 w-4 mr-2" />
-							<span className="text-sm">Cerrar Sesión</span>
-						</DropdownMenuItem>
-						</DropdownMenuContent>
-					</DropdownMenu>
+							<DropdownMenuSeparator className="opacity-50" />
+							
+							<DropdownMenuItem 
+								onClick={handleLogout}
+								className="rounded-md py-2 px-3 text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer font-medium"
+							>
+								<LogOut className="h-4 w-4 mr-2" />
+								<span className="text-sm">Cerrar Sesión</span>
+							</DropdownMenuItem>
+							</DropdownMenuContent>
+						</DropdownMenu>
+
 					</div>
 				</div>
 			</header>
@@ -1474,7 +1584,10 @@ function POSContent() {
 					/>
 
 					<div className="flex-1 overflow-auto">
-						<ProductGrid onProductSelect={addProductToOrder} />
+						<ProductGrid
+							onProductSelect={addProductToOrder}
+							bodegaId={selectedBodega?.id ?? null}
+						/>
 					</div>
 				</div>
 
@@ -1487,7 +1600,6 @@ function POSContent() {
 						onRemoveProduct={removeProductFromOrder}
 						onUpdateProduct={updateProductInOrder}
 						onUpdateCliente={handleUpdateCliente}
-						onUpdateBodega={handleUpdateBodega}
 						onCancelOrder={cancelCurrentOrder}
 						selectedCliente={selectedCliente}
 						selectedBodega={selectedBodega}
