@@ -13,6 +13,7 @@ import { OrdersTableView } from "@/components/orders-table-view"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "@/components/theme-provider"
 import { useAuthStorage } from '@/hooks/useAuthStorage'
+import { useRealtimeOrders } from '@/hooks/useRealtimeOrders'
 import { 
 	Sun, 
 	Moon, 
@@ -205,7 +206,7 @@ interface ValidationConfig {
 }
 
 function POSContent() {
-	const { getToken } = useAuthStorage()
+	const { getToken, getUser } = useAuthStorage()
 	const { theme, setTheme } = useTheme()
 	const confirmDialog = useConfirmation()
 	const [orders, setOrders] = useState<Order[]>([])
@@ -224,6 +225,7 @@ function POSContent() {
 	const [bodegaDefecto, setBodegaDefecto] = useState<Bodega | null>(null)
 	const [porcentajeRetencion, setPorcentajeRetencion] = useState<number>(0)
 	const [validationConfig, setValidationConfig] = useState<ValidationConfig | null>(null)
+	const [empresaToken, setEmpresaToken] = useState<string | null>(null)
 
 	// Búsqueda de bodegas para el selector del header
 	const [allBodegas, setAllBodegas] = useState<Bodega[]>([]);
@@ -245,17 +247,17 @@ function POSContent() {
 		const fetchBodegas = async () => {
 			setLoadingBodegas(true);
 			try {
-			const response = await apiClient.get('/bodega/combo-bodega'); // tu endpoint
-			const data = response.data.data || response.data;
-			const bodegasList = Array.isArray(data) ? data : [];
-			setAllBodegas(bodegasList);
-			setBodegasResultado(bodegasList); // inicialmente mostrar todas
+				const response = await apiClient.get('/bodega/combo-bodega'); // tu endpoint
+				const data = response.data.data || response.data;
+				const bodegasList = Array.isArray(data) ? data : [];
+				setAllBodegas(bodegasList);
+				setBodegasResultado(bodegasList); // inicialmente mostrar todas
 			} catch (error) {
-			console.error('Error cargando bodegas:', error);
-			setAllBodegas([]);
-			setBodegasResultado([]);
+				console.error('Error cargando bodegas:', error);
+				setAllBodegas([]);
+				setBodegasResultado([]);
 			} finally {
-			setLoadingBodegas(false);
+				setLoadingBodegas(false);
 			}
 		};
 		fetchBodegas();
@@ -283,13 +285,13 @@ function POSContent() {
 				const response = await apiClient.get('/pos/validate')
 				const config: ValidationConfig = response.data.data
 				const estadoIvaInlucido = config.iva_incluido
-				console.log('response: ',response);
+
 				setEmpresa(config.empresa)
 				setValidationConfig(config)
 				setIvaIncluido(estadoIvaInlucido || false)
 				setClienteDefecto(config.cliente)
 				setBodegaDefecto(config.bodega)
-
+				setEmpresaToken(config.empresa?.token_db);
 
 			} catch (error) {
 				console.error('❌ Error cargando configuración:', error)
@@ -365,6 +367,8 @@ function POSContent() {
 			return acc;
 		}, {} as { [key: number]: number });
 
+		console.log('ivaPorTasas: ',ivaPorTasas);
+
 		// Calcular retención (IGUAL A TU JAVASCRIPT)
 		if (topeRetencion > 0 && total >= topeRetencion) {
 			retencion = porcentajeRetencion ? (valorBruto * porcentajeRetencion) / 100 : 0;
@@ -387,7 +391,6 @@ function POSContent() {
 
 	// Función de mapeo envuelta en useCallback
 	const mapBackendOrderToFrontend = useCallback((backendOrder: BackendPedido): Order => {
-
 		const frontendItems: OrderItem[] = (backendOrder.detalles || []).map((detalle: any, index: number): OrderItem => {
 			const subtotalNum = Number.parseFloat(detalle.subtotal || '0');
 			const ivaValorNum = Number.parseFloat(detalle.iva_valor || '0');
@@ -415,6 +418,8 @@ function POSContent() {
 				id_cuenta_venta_retencion: detalle.id_cuenta_venta_retencion
 			}
 		});
+
+		console.log('frontendItems: ',frontendItems);
 
 		var ivaCalculo = 0
 		var retencionCalculo = 0
@@ -472,9 +477,11 @@ function POSContent() {
 				acc[tasa] = 0;
 			}
 
-			acc[tasa] += item.iva_valor;
+			acc[tasa] += parseFloat(item.iva_valor);
 			return acc;
 		}, {} as { [key: number]: number });
+
+		console.log('ivaPorTasas: ',ivaPorTasas);
 
 		return {
 			id: `order-${backendOrder.id}`, 
@@ -573,6 +580,59 @@ function POSContent() {
             estado: backendOrder.estado === 1 ? "pendiente" : "completado",
         };
     }, []);
+
+	const refreshOrders = useCallback(async () => {
+		try {
+			const response = await apiClient.get('/pos/pedidos');
+			const backendOrders: BackendPedido[] = response.data.data || [];
+			const newOrders = backendOrders
+			.filter(o => o.estado === 1) // solo pendientes
+			.map(mapBackendOrderToFrontend);
+			
+			setOrders(newOrders);
+			
+			// Si el currentOrder ya no existe (ej. fue eliminado), limpiar
+			if (currentOrder && !newOrders.find(o => o.id_backend === currentOrder.id_backend)) {
+			setCurrentOrder(null);
+			} else if (currentOrder) {
+			// Actualizar el currentOrder si existe
+			const updatedCurrent = newOrders.find(o => o.id_backend === currentOrder.id_backend);
+			if (updatedCurrent) setCurrentOrder(updatedCurrent);
+			}
+		} catch (error) {
+			console.error('Error refreshing orders:', error);
+		}
+	}, [mapBackendOrderToFrontend, currentOrder]);
+
+	const handleRealtimeEvent = useCallback((data: any) => {
+		const usuario = getUser();
+		
+		if (data.usuario_id === usuario?.id) {
+			return;
+		}
+		
+		switch (data.tipo) {
+			case 'pedido_creado':
+			case 'pedido_actualizado':
+			case 'pedido_completado':
+				refreshOrders(); // recarga la lista completa
+			break;
+			case 'pedido_eliminado':
+				// Eliminar localmente sin recargar toda la lista (optimización)
+				setOrders(prev => prev.filter(o => o.id_backend !== data.id_pedido));
+				if (currentOrder?.id_backend === data.id_pedido) {
+					setCurrentOrder(null);
+				}
+			break;
+			default:
+			break;
+		}
+	}, [refreshOrders, currentOrder]);
+
+	useRealtimeOrders({
+		empresaToken,
+		onEvent: handleRealtimeEvent,
+	});
 	
 	// Función para guardar en el backend
 	const saveOrderToBackend = async (
@@ -701,19 +761,16 @@ function POSContent() {
 		const loadOrders = async () => {
 			try {
 				const response = await apiClient.get('/pos/pedidos');
-
-
-
 				const backendOrders: BackendPedido[] = response.data.data || [];
-				const detailsOrder = response.data.data.length ? response.data.data[0].detalles : []
-				
 				const newOrders = backendOrders
 					.filter(o => o.estado === 1)
 					.map(mapBackendOrderToFrontend)
-
-				console.log('Pedidos cargados del backend:', newOrders);
 				
 				setOrders(newOrders)
+
+				if (newOrders.length === 0) {
+					return;
+				}
 
 				const cliente = newOrders[0].cliente;
 				const ubicacion = newOrders[0].ubicacion;

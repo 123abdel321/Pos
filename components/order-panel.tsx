@@ -287,8 +287,8 @@ export function OrderPanel({
                 porcentaje_reteica: 0,
             }
 
-            const response = await apiClient.post("/pos/nit", payload)
-
+            const response = await apiClient.post("/nit", payload)
+            
             if (response.data.success) {
                 const nuevoCliente = response.data.data
                 // Cerrar modal
