@@ -1,5 +1,3 @@
-// components/order-panel.tsx
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -8,14 +6,29 @@ import { Card } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { 
-    Trash2, 
-    Plus, 
-    Minus, 
-    ShoppingCart, 
-    CreditCard, 
-    X, 
-    Edit, 
+import { Label } from "@/components/ui/label"
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+import {
+    Trash2,
+    Plus,
+    Minus,
+    ShoppingCart,
+    CreditCard,
+    X,
+    Edit,
     User,
     Search,
     ChevronLeft,
@@ -23,7 +36,8 @@ import {
     Warehouse,
     ListOrdered,
     ChevronDown,
-    Printer
+    Printer,
+    UserPlus,
 } from "lucide-react"
 import { ProductEditModal } from "./product-edit-modal"
 import type { Order, OrderItem, Cliente, Bodega } from "@/app/page"
@@ -50,6 +64,13 @@ interface OrderPanelProps {
     ivaIncluido: boolean
 }
 
+// Interfaz para tipo de documento
+interface TipoDocumento {
+    id: number
+    nombre: string
+    abreviatura: string
+}
+
 export function OrderPanel({
     currentOrder,
     onCompleteOrder,
@@ -62,7 +83,7 @@ export function OrderPanel({
     onUpdateBodega,
     selectedCliente,
     selectedBodega,
-    ivaIncluido
+    ivaIncluido,
 }: OrderPanelProps) {
     const [isExpanded, setIsExpanded] = useState(true)
 
@@ -74,9 +95,48 @@ export function OrderPanel({
     const [clientesResultado, setClientesResultado] = useState<Cliente[]>([])
     const [editingProduct, setEditingProduct] = useState<OrderItem | null>(null)
 
-    // CAMBIO: Eliminado validationError porque ahora usamos deshabilitado directo
+    // Estados para el modal de creación de cliente
+    const [showCreateClienteModal, setShowCreateClienteModal] = useState(false)
+    const [tiposDocumento, setTiposDocumento] = useState<TipoDocumento[]>([])
+    const [loadingTipos, setLoadingTipos] = useState(false)
+    const [creatingCliente, setCreatingCliente] = useState(false)
+    const [clienteForm, setClienteForm] = useState({
+        id_tipo_documento: "",
+        numero_documento: "",
+        primer_nombre: "",
+        otros_nombres: "",
+        primer_apellido: "",
+        segundo_apellido: "",
+        razon_social: "",
+        direccion: "",
+        email: "",
+        telefono_1: "",
+    })
+    const [formErrors, setFormErrors] = useState<Record<string, string>>({})
 
-    // (Los useEffect de búsqueda se mantienen igual)
+    // Cargar tipos de documento al abrir el modal
+    useEffect(() => {
+        if (showCreateClienteModal && tiposDocumento.length === 0) {
+            const fetchTipos = async () => {
+                setLoadingTipos(true)
+                try {
+                    const response = await apiClient.get('/nit/combo-tipo-documento')
+                    const data = response.data.data || response.data
+                    setTiposDocumento(Array.isArray(data) ? data : [])
+                    if (Array.isArray(data) && data.length > 0) {
+                        setClienteForm(prev => ({ ...prev, id_tipo_documento: data[0].id.toString() }))
+                    }
+                } catch (error) {
+                    console.error("Error cargando tipos de documento:", error)
+                } finally {
+                    setLoadingTipos(false)
+                }
+            }
+            fetchTipos()
+        }
+    }, [showCreateClienteModal, tiposDocumento.length])
+
+    // Búsqueda de clientes
     useEffect(() => {
         if (searchCliente.trim() === "") {
             setClientesResultado([])
@@ -85,13 +145,13 @@ export function OrderPanel({
         const delayDebounceFn = setTimeout(async () => {
             try {
                 setLoadingClientes(true)
-                const response = await apiClient.get('/nit/combo-nit', {
-                    params: { search: searchCliente }
+                const response = await apiClient.get("/nit/combo-nit", {
+                    params: { search: searchCliente },
                 })
                 const data = response.data.data || response.data
                 setClientesResultado(Array.isArray(data) ? data : [])
             } catch (error) {
-                console.error('Error searching clientes:', error)
+                console.error("Error searching clientes:", error)
                 setClientesResultado([])
             } finally {
                 setLoadingClientes(false)
@@ -100,6 +160,7 @@ export function OrderPanel({
         return () => clearTimeout(delayDebounceFn)
     }, [searchCliente])
 
+    // Búsqueda de bodegas (mantenido igual)
     useEffect(() => {
         if (searchBodega.trim() === "") {
             setBodegasResultado([])
@@ -108,13 +169,13 @@ export function OrderPanel({
         const delayDebounceFn = setTimeout(async () => {
             try {
                 setLoadingBodegas(true)
-                const response = await apiClient.get('/bodega/combo-bodega', {
-                    params: { search: searchBodega }
+                const response = await apiClient.get("/bodega/combo-bodega", {
+                    params: { search: searchBodega },
                 })
                 const data = response.data.data || response.data
                 setBodegasResultado(Array.isArray(data) ? data : [])
             } catch (error) {
-                console.error('Error searching bodegas:', error)
+                console.error("Error searching bodegas:", error)
                 setBodegasResultado([])
             } finally {
                 setLoadingBodegas(false)
@@ -125,10 +186,10 @@ export function OrderPanel({
 
     const handlePrintOrder = (orderId: number | null) => {
         if (orderId) {
-            const pdfUrl = `https://app.portafolioerp.com/pos/pedido-print/${orderId}`;
-            window.open(pdfUrl, '_blank');
+            const pdfUrl = `https://app.portafolioerp.com/pos/pedido-print/${orderId}`
+            window.open(pdfUrl, "_blank")
         }
-    };
+    }
 
     const handleSelectCliente = (cliente: Cliente) => {
         setSearchCliente("")
@@ -143,8 +204,6 @@ export function OrderPanel({
         }
     }
 
-    // CAMBIO: Añadido handler para seleccionar bodega (aunque no se muestra en este componente, lo usará el padre)
-    // Si el padre no proporciona onUpdateBodega, esto no tendrá efecto.
     const handleSelectBodega = (bodega: Bodega) => {
         setSearchBodega("")
         if (onUpdateBodega) {
@@ -177,38 +236,139 @@ export function OrderPanel({
         setEditingProduct(null)
     }
 
-    // CAMBIO: Función de validación (solo lógica, no muestra error)
     const isValidRequirements = (): boolean => {
-        return !!selectedBodega && !!selectedCliente;
-    };
+        return !!selectedBodega && !!selectedCliente
+    }
 
-    // Handlers que validan
     const handleNewOrder = () => {
         if (isValidRequirements()) {
-            onNewOrder();
+            onNewOrder()
         }
-    };
+    }
 
     const handleCompleteOrder = () => {
         if (isValidRequirements()) {
-            onCompleteOrder();
+            onCompleteOrder()
         }
-    };
+    }
 
-    // Variables auxiliares para deshabilitar botones
-    const isMissingRequirements = !isValidRequirements();
-    const canAddProducts = currentOrder?.estado === 'pendiente';
+    const isMissingRequirements = !isValidRequirements()
+    const canAddProducts = currentOrder?.estado === "pendiente"
 
-    // RENDERIZADO PRINCIPAL
+    // --- Lógica para crear cliente ---
+    const handleCreateCliente = async () => {
+        // Validaciones básicas
+        const errors: Record<string, string> = {}
+        if (!clienteForm.id_tipo_documento) errors.id_tipo_documento = "Seleccione tipo de documento"
+        if (!clienteForm.numero_documento) errors.numero_documento = "Número de documento requerido"
+        if (Object.keys(errors).length > 0) {
+            setFormErrors(errors)
+            return
+        }
+        setFormErrors({})
+        setCreatingCliente(true)
+
+        try {
+            const payload = {
+                id_tipo_documento: parseInt(clienteForm.id_tipo_documento),
+                numero_documento: clienteForm.numero_documento,
+                primer_nombre: clienteForm.primer_nombre || null,
+                otros_nombres: clienteForm.otros_nombres || null,
+                primer_apellido: clienteForm.primer_apellido || null,
+                segundo_apellido: clienteForm.segundo_apellido || null,
+                razon_social: clienteForm.razon_social || null,
+                direccion: clienteForm.direccion || null,
+                email: clienteForm.email || null,
+                telefono_1: clienteForm.telefono_1 || null,
+                // Valores por defecto para campos obligatorios no incluidos en el formulario
+                proveedor: false,
+                sumar_aiu: false,
+                porcentaje_aiu: 0,
+                porcentaje_reteica: 0,
+            }
+
+            const response = await apiClient.post("/pos/nit", payload)
+
+            if (response.data.success) {
+                const nuevoCliente = response.data.data
+                // Cerrar modal
+                setShowCreateClienteModal(false)
+                // Limpiar formulario
+                setClienteForm({
+                    id_tipo_documento: tiposDocumento[0]?.id.toString() || "",
+                    numero_documento: "",
+                    primer_nombre: "",
+                    otros_nombres: "",
+                    primer_apellido: "",
+                    segundo_apellido: "",
+                    razon_social: "",
+                    direccion: "",
+                    email: "",
+                    telefono_1: "",
+                })
+                // Seleccionar automáticamente el nuevo cliente
+                if (onUpdateCliente) {
+                    onUpdateCliente(nuevoCliente)
+                }
+                // Opcional: mostrar notificación de éxito
+                window.dispatchEvent(
+                    new CustomEvent("showError", {
+                        detail: {
+                            message: "Cliente creado exitosamente",
+                            type: "success",
+                            autoClose: true,
+                            duration: 3000,
+                        },
+                    })
+                )
+            } else {
+                throw new Error(response.data.message || "Error al crear cliente")
+            }
+        } catch (error: any) {
+            let errorMsg = "Error al crear cliente"
+            if (error.response?.data?.message) {
+                const serverMsg = error.response.data.message
+                if (typeof serverMsg === "object") {
+                    const msgs = Object.values(serverMsg).flat()
+                    errorMsg = msgs.join(", ")
+                } else {
+                    errorMsg = serverMsg
+                }
+            } else if (error.message) {
+                errorMsg = error.message
+            }
+            window.dispatchEvent(
+                new CustomEvent("showError", {
+                    detail: { message: errorMsg, type: "error", autoClose: true, duration: 5000 },
+                })
+            )
+        } finally {
+            setCreatingCliente(false)
+        }
+    }
+
+    const handleInputChange = (field: keyof typeof clienteForm, value: string) => {
+        setClienteForm(prev => ({ ...prev, [field]: value }))
+        // Limpiar error de ese campo si existe
+        if (formErrors[field]) {
+            setFormErrors(prev => {
+                const newErrors = { ...prev }
+                delete newErrors[field]
+                return newErrors
+            })
+        }
+    }
+
+    // RENDER PRINCIPAL
     return (
         <>
-            <div 
+            <div
                 className={`
                     h-full flex flex-col border-l border-border bg-background/95 backdrop-blur-sm transition-all duration-300 ease-in-out flex-shrink-0 
                     ${isExpanded ? "w-full lg:w-96" : "w-16"}
                 `}
             >
-                {/* -------------------- HEADER SIEMPRE VISIBLE -------------------- */}
+                {/* HEADER */}
                 <div className="p-2 border-b border-border flex-shrink-0">
                     <div className="flex items-center justify-between">
                         {isExpanded && (
@@ -232,7 +392,7 @@ export function OrderPanel({
                             variant="ghost"
                             size="icon"
                             onClick={() => setIsExpanded(!isExpanded)}
-                            className={`h-7 w-7 p-0 ${isExpanded ? '' : 'mx-auto'}`}
+                            className={`h-7 w-7 p-0 ${isExpanded ? "" : "mx-auto"}`}
                             title={isExpanded ? "Colapsar Vista" : "Expandir Vista"}
                         >
                             {isExpanded ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
@@ -240,21 +400,34 @@ export function OrderPanel({
                     </div>
                 </div>
 
-                {/* -------------------- SELECTOR DE CLIENTE (SIEMPRE VISIBLE CUANDO EXPANDIDO) -------------------- */}
+                {/* SELECTOR DE CLIENTE */}
                 {isExpanded && (
                     <div className="p-2 border-b border-border flex-shrink-0">
                         <div className="space-y-1">
-                            <label htmlFor="cliente-selector" className="text-[11px] font-medium">
-                                Cliente {!selectedCliente && <span className="text-destructive">*</span>}
-                            </label>
+                            <div className="flex justify-between items-center">
+                                <label htmlFor="cliente-selector" className="text-[11px] font-medium">
+                                    Cliente {!selectedCliente && <span className="text-destructive">*</span>}
+                                </label>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-2 text-[10px] gap-1"
+                                    onClick={() => setShowCreateClienteModal(true)}
+                                >
+                                    <UserPlus className="h-3 w-3" />
+                                    Nuevo cliente
+                                </Button>
+                            </div>
                             {selectedCliente ? (
                                 <div className="flex items-center justify-between p-1 border rounded bg-muted/30">
                                     <div className="flex items-center gap-1">
                                         <User className="h-3 w-3 text-muted-foreground" />
                                         <div className="text-[11px] leading-tight">
-                                            <div className="font-medium truncate max-w-[120px]">{selectedCliente.nombre_completo}</div>
+                                            <div className="font-medium truncate max-w-[120px]">
+                                                {selectedCliente.nombre_completo}
+                                            </div>
                                             <div className="text-[10px] text-muted-foreground truncate max-w-[120px]">
-                                                {selectedCliente.text || 'Cliente por defecto'}
+                                                {selectedCliente.text || "Cliente por defecto"}
                                             </div>
                                         </div>
                                     </div>
@@ -270,7 +443,11 @@ export function OrderPanel({
                             ) : (
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <Button variant="outline" className="w-full justify-between h-7 px-2 text-[11px]" id="cliente-selector">
+                                        <Button
+                                            variant="outline"
+                                            className="w-full justify-between h-7 px-2 text-[11px]"
+                                            id="cliente-selector"
+                                        >
                                             <div className="flex items-center gap-1">
                                                 <User className="h-3 w-3" />
                                                 <span>Seleccionar cliente</span>
@@ -284,47 +461,56 @@ export function OrderPanel({
                                             <Input
                                                 placeholder="Buscar cliente..."
                                                 value={searchCliente}
-                                                onChange={(e) => setSearchCliente(e.target.value)}
+                                                onChange={e => setSearchCliente(e.target.value)}
                                                 className="pl-6 h-6 text-xs"
                                             />
                                         </div>
                                         <div className="max-h-44 overflow-auto">
                                             {loadingClientes ? (
                                                 <div className="text-center py-2">
-                                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mx-auto"></div>
-                                                    <p className="text-[10px] mt-1 text-muted-foreground">Buscando clientes...</p>
+                                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mx-auto" />
+                                                    <p className="text-[10px] mt-1 text-muted-foreground">
+                                                        Buscando clientes...
+                                                    </p>
                                                 </div>
                                             ) : clientesResultado.length > 0 ? (
-                                                clientesResultado.map((cliente) => (
+                                                clientesResultado.map(cliente => (
                                                     <DropdownMenuItem
                                                         key={cliente.id}
                                                         onClick={() => handleSelectCliente(cliente)}
                                                         className="flex flex-col items-start p-2 mb-1 hover:bg-accent rounded"
                                                     >
-                                                        <div className="font-medium text-[11px] leading-tight">{cliente.nombre_completo}</div>
-                                                        <div className="text-[10px] text-muted-foreground">{cliente.text}</div>
+                                                        <div className="font-medium text-[11px] leading-tight">
+                                                            {cliente.nombre_completo}
+                                                        </div>
+                                                        <div className="text-[10px] text-muted-foreground">
+                                                            {cliente.text}
+                                                        </div>
                                                     </DropdownMenuItem>
                                                 ))
                                             ) : searchCliente.trim() !== "" ? (
-                                                <div className="text-center py-2 text-muted-foreground text-[11px]">Sin resultados</div>
+                                                <div className="text-center py-2 text-muted-foreground text-[11px]">
+                                                    Sin resultados
+                                                </div>
                                             ) : (
-                                                <div className="text-center py-2 text-muted-foreground text-[11px]">Empieza a escribir para buscar clientes...</div>
+                                                <div className="text-center py-2 text-muted-foreground text-[11px]">
+                                                    Empieza a escribir para buscar clientes...
+                                                </div>
                                             )}
                                         </div>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             )}
                         </div>
-                        {/* Nota: No se incluye selector de bodega aquí por solicitud del usuario. La bodega debe seleccionarse fuera. */}
                     </div>
                 )}
 
-                {/* -------------------- MODO COLAPSADO (SUMMARY) -------------------- */}
+                {/* MODO COLAPSADO */}
                 {!isExpanded && currentOrder && (
                     <div className="flex-1 flex flex-col justify-between p-2 items-center max-h-149">
                         <div className="space-y-3 pt-4">
                             <div className="text-center text-[15px] font-mono">
-                                {currentOrder.id_backend ? `#${currentOrder.id_backend}` : 'TEMP'}
+                                {currentOrder.id_backend ? `#${currentOrder.id_backend}` : "TEMP"}
                             </div>
                         </div>
                         <div className="text-center space-y-2 flex-shrink-0 w-full">
@@ -346,11 +532,10 @@ export function OrderPanel({
                         </div>
                     </div>
                 )}
-                
-                {/* -------------------- CONTENIDO PRINCIPAL (EXPANDIDO) - SOLO SI HAY PEDIDO -------------------- */}
+
+                {/* CONTENIDO PRINCIPAL (EXPANDIDO CON PEDIDO) */}
                 {currentOrder && isExpanded && (
-                    <div className="flex-1 flex flex-col min-h-0"> 
-                        {/* 2.2 Order Items - FLEX-1 OVERFLOW-Y-AUTO */}
+                    <div className="flex-1 flex flex-col min-h-0">
                         <div className="flex-1 overflow-y-auto">
                             <div className="p-2">
                                 {currentOrder.productos.length === 0 ? (
@@ -359,7 +544,7 @@ export function OrderPanel({
                                     </div>
                                 ) : (
                                     <div className="space-y-2">
-                                        {currentOrder.productos.map((item) => (
+                                        {currentOrder.productos.map(item => (
                                             <Card key={item.consecutivo} className="p-2">
                                                 <div className="flex justify-between items-start mb-1">
                                                     <div className="flex-1">
@@ -369,7 +554,8 @@ export function OrderPanel({
                                                         </div>
                                                         {(item.descuento_porcentaje > 0 || item.descuento_valor > 0) && (
                                                             <div className="text-[11px] text-orange-600 leading-tight">
-                                                                Desc: {item.descuento_porcentaje > 0 && `${item.descuento_porcentaje}%`}
+                                                                Desc:{" "}
+                                                                {item.descuento_porcentaje > 0 && `${item.descuento_porcentaje}%`}
                                                                 {item.descuento_porcentaje > 0 && item.descuento_valor > 0 && " + "}
                                                                 {item.descuento_valor > 0 && formatPrice(item.descuento_valor)}
                                                             </div>
@@ -408,16 +594,22 @@ export function OrderPanel({
                                                                 variant="outline"
                                                                 size="icon"
                                                                 className="h-5 w-5 p-0 bg-transparent hover:bg-red-50"
-                                                                onClick={() => onUpdateQuantity(item.id_producto, item.cantidad - 1)}
+                                                                onClick={() =>
+                                                                    onUpdateQuantity(item.id_producto, item.cantidad - 1)
+                                                                }
                                                             >
                                                                 <Minus className="h-3 w-3 text-destructive" />
                                                             </Button>
-                                                            <span className="text-xs font-medium w-6 text-center">{item.cantidad}</span>
+                                                            <span className="text-xs font-medium w-6 text-center">
+                                                                {item.cantidad}
+                                                            </span>
                                                             <Button
                                                                 variant="outline"
                                                                 size="icon"
                                                                 className="h-5 w-5 p-0 bg-transparent hover:bg-green-50"
-                                                                onClick={() => onUpdateQuantity(item.id_producto, item.cantidad + 1)}
+                                                                onClick={() =>
+                                                                    onUpdateQuantity(item.id_producto, item.cantidad + 1)
+                                                                }
                                                             >
                                                                 <Plus className="h-3 w-3 text-success" />
                                                             </Button>
@@ -432,14 +624,14 @@ export function OrderPanel({
                             </div>
                         </div>
 
-                        {/* 2.3 Order Summary & Actions */}
+                        {/* SUMMARY Y ACCIONES */}
                         <div className="border-t border-border p-2 flex-shrink-0 bg-background">
                             <div className="space-y-1 mb-2">
                                 <div className="flex justify-between text-xs">
                                     <span>Subtotal:</span>
                                     <span>{formatPrice(currentOrder.subtotal)}</span>
                                 </div>
-                                {currentOrder?.iva_desglose && 
+                                {currentOrder?.iva_desglose &&
                                     Object.entries(currentOrder.iva_desglose)
                                         .filter(([tasa]) => parseFloat(tasa) > 0)
                                         .map(([tasa, valor]) => (
@@ -447,8 +639,7 @@ export function OrderPanel({
                                                 <span>IVA ({tasa}%):</span>
                                                 <span>{formatPrice(valor)}</span>
                                             </div>
-                                        ))
-                                }
+                                        ))}
                                 {currentOrder.retencion > 0 && (
                                     <div className="flex justify-between text-xs text-muted-foreground">
                                         <span>Retención ({currentOrder.porcentaje_retencion}%) :</span>
@@ -492,9 +683,9 @@ export function OrderPanel({
                                             </Button>
                                             <Button
                                                 variant="outline"
-                                                onClick={handleNewOrder}  // CAMBIO: usa handleNewOrder para validar
+                                                onClick={handleNewOrder}
                                                 className="w-1/2 gap-1 h-8"
-                                                disabled={isMissingRequirements}  // CAMBIO: deshabilitar si falta requisito
+                                                disabled={isMissingRequirements}
                                                 title={isMissingRequirements ? "Selecciona cliente y bodega primero" : ""}
                                             >
                                                 <Plus className="h-4 w-4" />
@@ -516,7 +707,7 @@ export function OrderPanel({
                     </div>
                 )}
 
-                {/* -------------------- ESTADO SIN PEDIDO ACTIVO (EXPANDIDO) -------------------- */}
+                {/* ESTADO SIN PEDIDO ACTIVO (EXPANDIDO) */}
                 {!currentOrder && isExpanded && (
                     <div className="flex-1 flex items-center justify-center min-h-0">
                         <div className="text-center">
@@ -540,7 +731,7 @@ export function OrderPanel({
                     </div>
                 )}
 
-                {/* -------------------- ESTADO SIN PEDIDO Y COLAPSADO -------------------- */}
+                {/* ESTADO SIN PEDIDO Y COLAPSADO */}
                 {!isExpanded && !currentOrder && (
                     <div className="flex-1 flex flex-col justify-center items-center p-2">
                         <ShoppingCart className="h-8 w-8 text-muted-foreground/50 mb-8" />
@@ -557,6 +748,135 @@ export function OrderPanel({
                     </div>
                 )}
             </div>
+
+            {/* MODAL PARA CREAR CLIENTE */}
+            <Dialog open={showCreateClienteModal} onOpenChange={setShowCreateClienteModal}>
+                <DialogContent className="sm:max-w-md md:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <UserPlus className="h-5 w-5 text-primary" />
+                            Nuevo Cliente
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-3 py-2 max-h-[60vh] overflow-y-auto">
+                        <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                                <Label className="text-xs">Tipo documento *</Label>
+                                <Select
+                                    value={clienteForm.id_tipo_documento}
+                                    onValueChange={(val) => handleInputChange("id_tipo_documento", val)}
+                                    disabled={loadingTipos}
+                                >
+                                    <SelectTrigger className="h-8 text-xs">
+                                        <SelectValue placeholder="Seleccionar" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {tiposDocumento.map((tipo) => (
+                                            <SelectItem key={tipo.id} value={tipo.id.toString()} className="text-xs">
+                                                {tipo.nombre}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {formErrors.id_tipo_documento && (
+                                    <p className="text-[10px] text-destructive">{formErrors.id_tipo_documento}</p>
+                                )}
+                            </div>
+                            <div className="space-y-1">
+                                <Label className="text-xs">Número documento *</Label>
+                                <Input
+                                    value={clienteForm.numero_documento}
+                                    onChange={(e) => handleInputChange("numero_documento", e.target.value)}
+                                    className="h-8 text-xs"
+                                    placeholder="NIT / CC"
+                                />
+                                {formErrors.numero_documento && (
+                                    <p className="text-[10px] text-destructive">{formErrors.numero_documento}</p>
+                                )}
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                                <Label className="text-xs">Primer nombre</Label>
+                                <Input
+                                    value={clienteForm.primer_nombre}
+                                    onChange={(e) => handleInputChange("primer_nombre", e.target.value)}
+                                    className="h-8 text-xs"
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <Label className="text-xs">Segundo nombre</Label>
+                                <Input
+                                    value={clienteForm.otros_nombres}
+                                    onChange={(e) => handleInputChange("otros_nombres", e.target.value)}
+                                    className="h-8 text-xs"
+                                />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                                <Label className="text-xs">Primer apellido</Label>
+                                <Input
+                                    value={clienteForm.primer_apellido}
+                                    onChange={(e) => handleInputChange("primer_apellido", e.target.value)}
+                                    className="h-8 text-xs"
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <Label className="text-xs">Segundo apellido</Label>
+                                <Input
+                                    value={clienteForm.segundo_apellido}
+                                    onChange={(e) => handleInputChange("segundo_apellido", e.target.value)}
+                                    className="h-8 text-xs"
+                                />
+                            </div>
+                        </div>
+                        <div className="space-y-1">
+                            <Label className="text-xs">Razón social</Label>
+                            <Input
+                                value={clienteForm.razon_social}
+                                onChange={(e) => handleInputChange("razon_social", e.target.value)}
+                                className="h-8 text-xs"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <Label className="text-xs">Dirección</Label>
+                            <Input
+                                value={clienteForm.direccion}
+                                onChange={(e) => handleInputChange("direccion", e.target.value)}
+                                className="h-8 text-xs"
+                            />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                                <Label className="text-xs">Email</Label>
+                                <Input
+                                    type="email"
+                                    value={clienteForm.email}
+                                    onChange={(e) => handleInputChange("email", e.target.value)}
+                                    className="h-8 text-xs"
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <Label className="text-xs">Teléfono</Label>
+                                <Input
+                                    value={clienteForm.telefono_1}
+                                    onChange={(e) => handleInputChange("telefono_1", e.target.value)}
+                                    className="h-8 text-xs"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" onClick={() => setShowCreateClienteModal(false)} disabled={creatingCliente}>
+                            Cancelar
+                        </Button>
+                        <Button onClick={handleCreateCliente} disabled={creatingCliente}>
+                            {creatingCliente ? "Creando..." : "Crear Cliente"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Product Edit Modal */}
             {editingProduct && (

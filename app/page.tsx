@@ -366,7 +366,7 @@ function POSContent() {
 		}, {} as { [key: number]: number });
 
 		// Calcular retención (IGUAL A TU JAVASCRIPT)
-		if (total >= topeRetencion) {
+		if (topeRetencion > 0 && total >= topeRetencion) {
 			retencion = porcentajeRetencion ? (valorBruto * porcentajeRetencion) / 100 : 0;
 		}
 
@@ -451,7 +451,7 @@ function POSContent() {
 		}
 
 		totalCalculo = ivaIncluido ? valorBrutoCalculo : valorBrutoCalculo + ivaCalculo;
-		if (totalCalculo >= topeRetencion) {
+		if (totalCalculo > 0 && totalCalculo >= topeRetencion) {
 			retencionCalculo = porcentajeRetencion ? (valorBrutoCalculo * porcentajeRetencion) / 100 : 0;
 		}
 

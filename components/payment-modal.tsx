@@ -1,4 +1,5 @@
 "use client"
+
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -11,8 +12,7 @@ import { X, CreditCard, DollarSign, Smartphone, Building2, Plus, Trash2, ArrowLe
 import type { Order } from "@/app/page"
 import apiClient from "@/app/api/apiClient"
 
-// --- I. Definiciones de Tipos y Constantes ---
-
+// --- Tipos ---
 interface PaymentMethod {
     id: number
     nombre: string
@@ -47,6 +47,7 @@ interface PaymentModalProps {
     onClose: () => void
 }
 
+// --- Constantes ---
 const COLOMBIAN_BILLS = [
     { value: 100000, label: "100.000", common: true },
     { value: 50000, label: "50.000", common: true },
@@ -57,28 +58,38 @@ const COLOMBIAN_BILLS = [
     { value: 1000, label: "1.000", common: false },
 ]
 
-// --- II. Funciones de Utilidad ---
-
-const formatPrice = (price: number) => {
+// --- Utilidades de formato (CORREGIDAS) ---
+const formatCOP = (value: number): string => {
     return new Intl.NumberFormat("es-CO", {
         style: "currency",
         currency: "COP",
         minimumFractionDigits: 0,
-    }).format(price)
+    }).format(value)
+}
+
+// Convierte un string con formato "1.234.567" a número 1234567
+const parseFormattedNumber = (formatted: string): number => {
+    const clean = formatted.replace(/\./g, "").replace(/,/g, "")
+    const num = parseInt(clean, 10)
+    return isNaN(num) ? 0 : num
+}
+
+// Formatea un número con separadores de miles, sin símbolo de moneda
+const formatThousands = (value: number): string => {
+    return value.toLocaleString("es-CO")
 }
 
 const getPaymentIcon = (methodName: string) => {
-    switch (methodName.toLowerCase()) {
-        case "efectivo": return <DollarSign className="h-4 w-4" />
-        case "transferencia": return <Smartphone className="h-4 w-4" />
-        case "pagos bancolombia": return <Building2 className="h-4 w-4" />
-        case "nequi": return <Smartphone className="h-4 w-4" />
-        case "daviplata": return <Zap className="h-4 w-4" />
-        default: return <CreditCard className="h-4 w-4" />
-    }
+    const name = methodName.toLowerCase()
+    if (name === "efectivo") return <DollarSign className="h-4 w-4" />
+    if (name === "transferencia") return <Smartphone className="h-4 w-4" />
+    if (name === "pagos bancolombia") return <Building2 className="h-4 w-4" />
+    if (name === "nequi") return <Smartphone className="h-4 w-4" />
+    if (name === "daviplata") return <Zap className="h-4 w-4" />
+    return <CreditCard className="h-4 w-4" />
 }
 
-// --- III. El Componente Principal ---
+// --- Componente Principal ---
 export function PaymentModal({ order, onPayment, onClose }: PaymentModalProps) {
     const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
     const [resolutions, setResolutions] = useState<Resolution[]>([])
@@ -89,42 +100,22 @@ export function PaymentModal({ order, onPayment, onClose }: PaymentModalProps) {
     const [submitting, setSubmitting] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
-    // Estados para la entrada de valor
+    // Estados para entrada de valores
     const [currentInputAmount, setCurrentInputAmount] = useState<string>("")
     const [selectedBills, setSelectedBills] = useState<{ [key: number]: number }>({})
     const [paymentMode, setPaymentMode] = useState<"quick" | "bills" | "manual">("quick")
 
-    // Función para formatear número con separadores de miles
-    const formatNumberWithCommas = (number: number): string => {
-        return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")
-    }
-
-    // Función para quitar formato y obtener el número puro
-    const parseFormattedNumber = (formatted: string): number => {
-        return Number(formatted.replace(/\./g, ''))
-    }
-
-    const totalPaid = useMemo(() => payments.reduce((sum, payment) => sum + payment.valor, 0), [payments])
+    // Cálculos derivados (CORREGIDOS)
+    const totalPaid = useMemo(() => payments.reduce((sum, p) => sum + p.valor, 0), [payments])
     const remaining = useMemo(() => order.total - totalPaid, [order.total, totalPaid])
     const change = useMemo(() => Math.max(0, -remaining), [remaining])
-    const amountToPayQuick = useMemo(() => remaining > 0 ? remaining : order.total, [remaining, order.total])
+    const amountToPayQuick = useMemo(() => (remaining > 0 ? remaining : order.total), [remaining, order.total])
 
-    // EFECTO: Actualizar el input cuando cambia el método de pago o el remaining
-    useEffect(() => {
-        if (selectedMethod && selectedMethod.nombre.toLowerCase() !== "efectivo" && remaining > 0) {
-            // Formatear el remaining con separadores de miles
-            setCurrentInputAmount(formatNumberWithCommas(remaining))
-        }
-    }, [selectedMethod, remaining])
-
-    // EFECTO: RESTAURADO PARA CARGAR DATOS DE LA API
+    // Cargar métodos de pago y resoluciones
     useEffect(() => {
         const fetchData = async () => {
             try {
                 setLoading(true)
-                setError(null)
-
-                // Simulación de consumo de API (usando tu estructura original)
                 const [paymentResponse, resolutionResponse] = await Promise.all([
                     apiClient.get('/forma-pago/combo-forma-pago?type=ventas'),
                     apiClient.get('/resoluciones/combo-resoluciones')
@@ -136,7 +127,8 @@ export function PaymentModal({ order, onPayment, onClose }: PaymentModalProps) {
                     text: item.text
                 }))
                 setPaymentMethods(methods)
-                setSelectedMethod(methods.find(m => m.nombre.toLowerCase() === 'efectivo') || methods[0] || null)
+                const defaultMethod = methods.find(m => m.nombre.toLowerCase() === 'efectivo') || methods[0]
+                setSelectedMethod(defaultMethod || null)
 
                 const resolutionsData: Resolution[] = resolutionResponse.data.data.map((item: any) => ({
                     id: item.id,
@@ -152,8 +144,8 @@ export function PaymentModal({ order, onPayment, onClose }: PaymentModalProps) {
                     setSelectedResolution(resolutionsData[0].id.toString())
                 }
             } catch (err) {
-                console.error("Error fetching data:", err)
-                setError("Error al cargar los datos de la API. Verifique la conexión o el formato de respuesta.")
+                console.error(err)
+                setError("Error al cargar los datos. Verifique la conexión.")
             } finally {
                 setLoading(false)
             }
@@ -161,122 +153,106 @@ export function PaymentModal({ order, onPayment, onClose }: PaymentModalProps) {
         fetchData()
     }, [])
 
-    // --- IV. Cálculos y Lógica Derivada ---
+    // Prellenar el importe cuando el método no es efectivo
+    useEffect(() => {
+        if (selectedMethod && selectedMethod.nombre.toLowerCase() !== "efectivo" && remaining > 0) {
+            setCurrentInputAmount(formatThousands(remaining))
+            setPaymentMode("manual")
+        } else if (selectedMethod && selectedMethod.nombre.toLowerCase() === "efectivo") {
+            setCurrentInputAmount("")
+            setPaymentMode("quick")
+        }
+    }, [selectedMethod, remaining])
 
-    const calculateTotalFromBills = useCallback(() => {
-        return Object.entries(selectedBills).reduce((sum, [denomination, quantity]) => {
-            return sum + (Number(denomination) * quantity)
-        }, 0)
-    }, [selectedBills])
-
-    const getCurrentInvoiceNumber = useCallback(() => {
-        if (!selectedResolution) return ""
-        const resolution = resolutions.find(r => r.id.toString() === selectedResolution)
-        return resolution ? `${resolution.prefijo}${resolution.consecutivo}` : ""
-    }, [selectedResolution, resolutions])
-
-    const addPayment = useCallback((amount: number, method: PaymentMethod, bills: BillEntry[] | undefined = undefined) => {
+    // Agregar un pago
+    const addPayment = useCallback((amount: number, method: PaymentMethod, bills?: BillEntry[]) => {
         if (amount <= 0) return
-        const newPayment: PaymentEntry = {
-            id: Date.now(),
+        setPayments(prev => [...prev, {
+            id: Date.now() + Math.random(),
             valor: amount,
             metodo: method,
             billetes: bills
-        }
-        setPayments(prev => [...prev, newPayment])
+        }])
         setCurrentInputAmount("")
         setSelectedBills({})
         setPaymentMode("quick")
     }, [])
 
-    const addCashPaymentFromBills = useCallback(() => {
-        if (!selectedMethod || selectedMethod.nombre.toLowerCase() !== "efectivo") return
-        const total = calculateTotalFromBills()
-        if (total <= 0) return
-
-        const billsData: BillEntry[] = Object.entries(selectedBills)
-            .filter(([_, quantity]) => quantity > 0)
-            .map(([denomination, quantity]) => ({
-                denomination: Number(denomination),
-                quantity
-            }))
-
-        addPayment(total, selectedMethod, billsData)
-    }, [selectedMethod, calculateTotalFromBills, selectedBills, addPayment])
-
+    // Pagos rápidos (efectivo)
     const handleQuickPayment = useCallback((amount: number) => {
         if (!selectedMethod) return
         addPayment(amount, selectedMethod)
     }, [selectedMethod, addPayment])
 
-    // Modificar handleManualAdd para manejar el formato
+    // Agregar manual (cualquier método)
     const handleManualAdd = useCallback(() => {
         if (!selectedMethod || !currentInputAmount) return
-        // Convertir el valor formateado a número puro
         const amount = parseFormattedNumber(currentInputAmount)
         if (amount > 0) {
             addPayment(amount, selectedMethod)
         }
     }, [selectedMethod, currentInputAmount, addPayment])
 
-    // Modificar el onChange del input para mantener el formato
+    // Manejar cambio en input (formato miles)
     const handleInputChange = useCallback((value: string) => {
-        const cleanValue = value.replace(/\./g, '')
-
-        if (cleanValue === '' || /^\d+$/.test(cleanValue)) {
-            const numberValue = cleanValue === '' ? 0 : parseInt(cleanValue, 10)
-            setCurrentInputAmount(
-                numberValue === 0 ? '' : formatNumberWithCommas(numberValue)
-            )
+        const numeric = value.replace(/\D/g, "")
+        if (numeric === "") {
+            setCurrentInputAmount("")
+            return
         }
+        const numberValue = parseInt(numeric, 10)
+        setCurrentInputAmount(formatThousands(numberValue))
     }, [])
 
+    // Agregar pago desde selector de billetes
+    const addCashPaymentFromBills = useCallback(() => {
+        if (!selectedMethod || selectedMethod.nombre.toLowerCase() !== "efectivo") return
+        const total = Object.entries(selectedBills).reduce((sum, [den, qty]) => sum + Number(den) * qty, 0)
+        if (total <= 0) return
+        const billsData: BillEntry[] = Object.entries(selectedBills)
+            .filter(([_, qty]) => qty > 0)
+            .map(([den, qty]) => ({ denomination: Number(den), quantity: qty }))
+        addPayment(total, selectedMethod, billsData)
+    }, [selectedMethod, selectedBills, addPayment])
+
+    // Seleccionar billete
+    const handleBillSelect = useCallback((denomination: number) => {
+        setSelectedBills(prev => ({ ...prev, [denomination]: (prev[denomination] || 0) + 1 }))
+    }, [])
+
+    // Quitar billete
+    const handleBillRemove = useCallback((denomination: number) => {
+        setSelectedBills(prev => {
+            const newQty = (prev[denomination] || 0) - 1
+            if (newQty <= 0) {
+                const { [denomination]: _, ...rest } = prev
+                return rest
+            }
+            return { ...prev, [denomination]: newQty }
+        })
+    }, [])
+
+    // Eliminar pago registrado
     const removePayment = useCallback((id: number) => {
         setPayments(prev => prev.filter(p => p.id !== id))
     }, [])
 
-    const handleBillSelect = useCallback((denomination: number) => {
-        setSelectedBills(prev => ({
-            ...prev,
-            [denomination]: (prev[denomination] || 0) + 1
-        }))
-    }, [])
+    // Número de factura actual
+    const getCurrentInvoiceNumber = useCallback(() => {
+        if (!selectedResolution) return ""
+        const resolution = resolutions.find(r => r.id.toString() === selectedResolution)
+        return resolution ? `${resolution.prefijo}${resolution.consecutivo}` : ""
+    }, [selectedResolution, resolutions])
 
-    const handleBillRemove = useCallback((denomination: number) => {
-        setSelectedBills(prev => {
-            const newQuantity = (prev[denomination] || 0) - 1
-            if (newQuantity <= 0) {
-                const { [denomination]: removed, ...rest } = prev
-                return rest
-            }
-            return { ...prev, [denomination]: newQuantity }
-        })
-    }, [])
-
-    // Modificar el handler para cambiar método de pago
-    const handleMethodChange = useCallback((method: PaymentMethod) => {
-        setSelectedMethod(method)
-
-        // Si el método no es efectivo, establecer el monto completo formateado
-        if (method.nombre.toLowerCase() !== "efectivo" && remaining > 0) {
-            setCurrentInputAmount(formatNumberWithCommas(remaining))
-            setPaymentMode("manual") // Cambiar a modo manual automáticamente
-        } else {
-            setCurrentInputAmount("")
-            setPaymentMode("quick")
-        }
-    }, [remaining])
-
+    // Completar venta
     const handleCompletePayment = async () => {
         if (remaining > 0 || payments.length === 0) return
         const selectedResolutionData = resolutions.find(r => r.id.toString() === selectedResolution)
         if (!selectedResolutionData) {
-            setError("No se ha seleccionado una resolución válida")
+            setError("Seleccione una resolución válida")
             return
         }
-
         setSubmitting(true)
-
         try {
             const paymentData = {
                 pagos: payments.map(p => ({
@@ -296,23 +272,25 @@ export function PaymentModal({ order, onPayment, onClose }: PaymentModalProps) {
                 consecutivo: selectedResolutionData.consecutivo,
                 observacion: `Venta ${order.ubicacion_nombre}`,
             }
-            
             await onPayment(paymentData)
-
-        } catch (error) {
-            console.error("Error al procesar el pago:", error)
-            setError("Error al procesar el pago. Por favor, intente nuevamente.")
+        } catch (err) {
+            console.error(err)
+            setError("Error al procesar el pago. Intente nuevamente.")
         } finally {
             setSubmitting(false)
         }
     }
 
+    const billsTotal = useMemo(() => {
+        return Object.entries(selectedBills).reduce((sum, [den, qty]) => sum + Number(den) * qty, 0)
+    }, [selectedBills])
+
     return (
-        <Dialog open={true} onOpenChange={onClose}>
-            <DialogContent className="w-screen h-screen max-w-none max-h-none rounded-none flex flex-col p-0 bg-[#0e162b] text-card-foreground">
-                {/* HEADER */}
-                <DialogHeader className="p-4 border-b border-[#1b2641] bg-[#1a2035] shrink-0">
-                    <DialogTitle className="flex items-center gap-3 text-lg md:text-2xl font-extrabold text-foreground">
+        <Dialog open onOpenChange={onClose}>
+            <DialogContent className="w-screen h-screen max-w-none max-h-none rounded-none flex flex-col p-0 bg-background text-foreground">
+                {/* Header */}
+                <DialogHeader className="p-4 border-b shrink-0 bg-muted/20">
+                    <DialogTitle className="flex items-center gap-3 text-lg md:text-2xl font-extrabold">
                         <CreditCard className="h-5 w-5 md:h-6 md:w-6 text-primary" />
                         Procesar Pago
                         <span className="text-xs md:text-base font-medium text-muted-foreground ml-2 md:ml-4">
@@ -321,97 +299,79 @@ export function PaymentModal({ order, onPayment, onClose }: PaymentModalProps) {
                     </DialogTitle>
                 </DialogHeader>
 
-                {/* BODY */}
-                <div className="flex-1 overflow-y-auto px-3 py-2 md:p-4 space-y-3 md:space-y-0 md:grid md:grid-cols-12 md:gap-3">
-                    {/* Facturación y Resumen */}
-                    <div className="md:col-span-3 flex flex-col gap-3">
-                        <Card className="p-3 border border-[#202a46] bg-[#161b2e] shadow-sm">
+                {/* Body: grid responsiva */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 md:grid md:grid-cols-12 md:gap-4 md:space-y-0">
+                    {/* Columna izquierda: Facturación y Resumen */}
+                    <div className="md:col-span-3 space-y-4">
+                        <Card className="p-3">
                             <h3 className="font-semibold text-sm mb-2 text-primary">Facturación</h3>
-                            <div className="space-y-2 text-xs">
+                            <div className="space-y-3">
                                 <div>
-                                    <Label htmlFor="resolution" className="text-[11px] text-muted-foreground">Resolución *</Label>
-                                    <Select
-                                        value={selectedResolution}
-                                        onValueChange={setSelectedResolution}
-                                        disabled={loading}
-                                    >
-                                        <SelectTrigger className="h-7 mt-0.5 text-xs bg-[#1d2440] border border-[#2b355d]">
+                                    <Label className="text-xs text-muted-foreground">Resolución *</Label>
+                                    <Select value={selectedResolution} onValueChange={setSelectedResolution} disabled={loading}>
+                                        <SelectTrigger className="h-8 text-sm">
                                             <SelectValue placeholder="Seleccionar" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {resolutions.map((r) => (
-                                                <SelectItem key={r.id} value={r.id.toString()}>
-                                                    {r.text}
-                                                </SelectItem>
+                                            {resolutions.map(r => (
+                                                <SelectItem key={r.id} value={r.id.toString()}>{r.text}</SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
                                 </div>
-
                                 <div>
-                                    <Label htmlFor="invoice" className="text-[11px] text-muted-foreground">No. Factura *</Label>
-                                    <Input
-                                        id="invoice"
-                                        value={getCurrentInvoiceNumber()}
-                                        readOnly
-                                        className="h-7 mt-0.5 bg-[#1d2440] text-primary font-semibold text-xs border border-[#2b355d] font-mono"
-                                    />
+                                    <Label className="text-xs text-muted-foreground">No. Factura *</Label>
+                                    <Input value={getCurrentInvoiceNumber()} readOnly className="h-8 font-mono text-sm font-semibold bg-muted" />
                                 </div>
                             </div>
                         </Card>
 
-                        <Card className="p-3 border border-[#202a46] bg-[#161b2e] shadow-sm">
+                        <Card className="p-3">
                             <h3 className="font-semibold text-sm mb-2 text-primary">Resumen</h3>
-                            <div className="space-y-1.5 text-xs">
+                            <div className="space-y-1 text-sm">
                                 <div className="flex justify-between">
                                     <span className="text-muted-foreground">Subtotal:</span>
-                                    <span>{formatPrice(order.subtotal)}</span>
+                                    <span>{formatCOP(order.subtotal)}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-muted-foreground">IVA:</span>
-                                    <span>{formatPrice(order.iva)}</span>
+                                    <span>{formatCOP(order.iva)}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-muted-foreground">RETENCIÓN:</span>
-                                    <span>{formatPrice(order.retencion)}</span>
+                                    <span className="text-muted-foreground">Retención:</span>
+                                    <span>{formatCOP(order.retencion)}</span>
                                 </div>
-                                <Separator className="my-1 bg-border/40" />
-                                <div className="flex justify-between items-center border-t border-dashed border-border pt-1">
-                                    <span className="font-semibold text-foreground text-xs">Total</span>
-                                    <span className="text-primary font-bold text-sm">{formatPrice(order.total)}</span>
+                                <Separator />
+                                <div className="flex justify-between font-bold">
+                                    <span>Total</span>
+                                    <span className="text-primary">{formatCOP(order.total)}</span>
                                 </div>
                             </div>
                         </Card>
+
                         {error && (
-                            <div className="bg-destructive/10 border border-destructive/50 text-destructive p-3 rounded-lg text-sm shadow-sm">
-                                ❌ <b>Error:</b> {error}
+                            <div className="bg-destructive/10 border border-destructive/50 text-destructive p-2 rounded-md text-sm">
+                                ❌ {error}
                             </div>
                         )}
                     </div>
 
-                    {/* Métodos de Pago */}
-                    <div className="md:col-span-6 flex flex-col gap-3">
-                        <Card className="p-3 shadow-sm border border-[#222c4a] bg-[#161b2e]">
-                            <h3 className="font-semibold text-sm mb-2 text-primary border-b border-[#222c4a] pb-1">
-                                Métodos de Pago
-                            </h3>
-
+                    {/* Columna central: Métodos de pago y selector */}
+                    <div className="md:col-span-6 space-y-4">
+                        <Card className="p-3">
+                            <h3 className="font-semibold text-sm mb-2 text-primary border-b pb-1">Métodos de Pago</h3>
                             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                                 {loading ? (
-                                    [...Array(6)].map((_, i) => (
-                                        <div key={i} className="h-14 border rounded-md bg-[#2d3748] animate-pulse" />
+                                    Array.from({ length: 6 }).map((_, i) => (
+                                        <div key={i} className="h-14 rounded-md bg-muted animate-pulse" />
                                     ))
                                 ) : (
-                                    paymentMethods.map((method) => (
+                                    paymentMethods.map(method => (
                                         <Button
                                             key={method.id}
                                             variant={selectedMethod?.id === method.id ? "default" : "outline"}
-                                            onClick={() => handleMethodChange(method)}
-                                            className={`flex flex-col items-center justify-center h-14 p-1 text-[10px] sm:text-[11px] font-semibold transition-all
-                      ${selectedMethod?.id === method.id
-                                                    ? "bg-primary/90 ring-1 ring-primary/50 shadow-md"
-                                                    : "hover:bg-[#2d3748] border-[#2d3748]"
-                                                }`}
+                                            onClick={() => setSelectedMethod(method)}
+                                            className="flex flex-col items-center justify-center h-14 p-1 text-xs font-semibold"
                                         >
                                             {getPaymentIcon(method.nombre)}
                                             <span className="truncate w-full">{method.text}</span>
@@ -422,106 +382,78 @@ export function PaymentModal({ order, onPayment, onClose }: PaymentModalProps) {
                         </Card>
 
                         {selectedMethod && (
-                            <Card className="p-3 shadow-sm bg-[#161b2e]/80 border border-[#222c4a]">
-                                <h4 className="font-semibold text-sm mb-3 flex items-center gap-1 text-primary">
+                            <Card className="p-3">
+                                <h4 className="font-semibold text-sm mb-2 flex items-center gap-1 text-primary">
                                     <Coins className="h-4 w-4" />
                                     {selectedMethod.text}
                                 </h4>
 
                                 {selectedMethod.nombre.toLowerCase() === "efectivo" ? (
                                     <div className="space-y-3">
-                                        {/* Tabs */}
-                                        <div className="flex gap-1.5">
-                                            {[{ mode: "quick", icon: Calculator, label: "Rápido" },
-                                            { mode: "bills", icon: Coins, label: "Billetes" },
-                                            { mode: "manual", icon: DollarSign, label: "Manual" }].map(({ mode, icon: Icon, label }) => (
+                                        {/* Modos */}
+                                        <div className="flex gap-2">
+                                            {[
+                                                { mode: "quick", icon: Calculator, label: "Rápido" },
+                                                { mode: "bills", icon: Coins, label: "Billetes" },
+                                                { mode: "manual", icon: DollarSign, label: "Manual" }
+                                            ].map(({ mode, icon: Icon, label }) => (
                                                 <Button
                                                     key={mode}
                                                     variant={paymentMode === mode ? "default" : "secondary"}
-                                                    onClick={() => setPaymentMode(mode as "quick" | "bills" | "manual")}
-                                                    className="flex-1 gap-1 h-8 text-[10px] sm:text-[11px]"
+                                                    onClick={() => setPaymentMode(mode as any)}
+                                                    className="flex-1 gap-1 h-8 text-xs"
                                                 >
                                                     <Icon className="h-3 w-3" /> {label}
                                                 </Button>
                                             ))}
                                         </div>
 
-                                        <Separator className="bg-[#1b2641]" />
+                                        <Separator />
 
-                                        {/* Modo rápido */}
                                         {paymentMode === "quick" && (
-                                            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                                                <Button
-                                                    onClick={() => handleQuickPayment(amountToPayQuick)}
-                                                    disabled={remaining <= 0}
-                                                    className="h-10 bg-success hover:bg-success/90 text-white text-xs font-bold shadow"
-                                                >
-                                                    Exacto ({formatPrice(amountToPayQuick)})
+                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                                <Button onClick={() => handleQuickPayment(amountToPayQuick)} disabled={remaining <= 0} className="bg-success text-white hover:bg-success/90">
+                                                    Exacto ({formatCOP(amountToPayQuick)})
                                                 </Button>
-                                                {[20000, 50000, 100000].map((amount) => (
-                                                    <Button
-                                                        key={amount}
-                                                        onClick={() => handleQuickPayment(amount)}
-                                                        variant="outline"
-                                                        className="h-10 text-xs border-[#2d3748] hover:border-primary"
-                                                    >
-                                                        {formatPrice(amount)}
+                                                {[20000, 50000, 100000].map(amount => (
+                                                    <Button key={amount} onClick={() => handleQuickPayment(amount)} variant="outline">
+                                                        {formatCOP(amount)}
                                                     </Button>
                                                 ))}
                                             </div>
                                         )}
 
-                                        {/* Bill Selector */}
                                         {paymentMode === "bills" && (
                                             <div className="space-y-4">
-                                                <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
-                                                    {COLOMBIAN_BILLS.filter(bill => bill.common).map((bill) => (
-                                                        <div key={bill.value} className="flex flex-col items-center gap-2">
+                                                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                                                    {COLOMBIAN_BILLS.filter(b => b.common).map(bill => (
+                                                        <div key={bill.value} className="flex flex-col items-center gap-1">
                                                             <Button
                                                                 onClick={() => handleBillSelect(bill.value)}
                                                                 variant="outline"
-                                                                className={`w-full h-14 flex flex-col items-center justify-center p-2 border ${selectedBills[bill.value] > 0 ? 'border-primary bg-primary/10' : ''}`}
+                                                                className={`w-full h-12 flex flex-col ${selectedBills[bill.value] ? "border-primary bg-primary/10" : ""}`}
                                                             >
                                                                 <span className="text-sm font-bold">{bill.label}</span>
-                                                                <span className="text-xs text-muted-foreground font-mono">
-                                                                    ({selectedBills[bill.value] || 0})
-                                                                </span>
+                                                                <span className="text-xs">({selectedBills[bill.value] || 0})</span>
                                                             </Button>
                                                             {selectedBills[bill.value] > 0 && (
-                                                                <Button
-                                                                    onClick={() => handleBillRemove(bill.value)}
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    className="h-6 w-full p-0 text-destructive hover:bg-destructive/10 text-xs gap-1"
-                                                                >
+                                                                <Button onClick={() => handleBillRemove(bill.value)} variant="ghost" size="sm" className="h-6 text-destructive">
                                                                     <X className="h-3 w-3" />
                                                                 </Button>
                                                             )}
                                                         </div>
                                                     ))}
                                                 </div>
-
-                                                <div className="bg-card rounded-lg p-4 border border-border shadow-inner">
-                                                    <div className="flex items-center justify-between mb-4">
-                                                        <span className="font-bold text-sm text-foreground">Total en billetes:</span>
-                                                        <span className="text-xl font-extrabold text-success">
-                                                            {formatPrice(calculateTotalFromBills())}
-                                                        </span>
+                                                <div className="bg-muted p-3 rounded-lg">
+                                                    <div className="flex justify-between items-center mb-2">
+                                                        <span className="font-bold">Total billetes:</span>
+                                                        <span className="text-xl font-bold text-success">{formatCOP(billsTotal)}</span>
                                                     </div>
-                                                    <div className="flex gap-3">
-                                                        <Button
-                                                            onClick={addCashPaymentFromBills}
-                                                            disabled={calculateTotalFromBills() <= 0}
-                                                            className="flex-1 gap-2 h-11 text-base shadow-md bg-primary text-primary-foreground hover:bg-primary/90"
-                                                        >
-                                                            <Plus className="h-4 w-4" />
-                                                            Agregar Pago
+                                                    <div className="flex gap-2">
+                                                        <Button onClick={addCashPaymentFromBills} disabled={billsTotal <= 0} className="flex-1 gap-1">
+                                                            <Plus className="h-4 w-4" /> Agregar pago
                                                         </Button>
-                                                        <Button
-                                                            onClick={() => setSelectedBills({})}
-                                                            variant="outline"
-                                                            className="gap-2 h-11 w-20 text-destructive hover:border-destructive"
-                                                        >
+                                                        <Button onClick={() => setSelectedBills({})} variant="outline">
                                                             <X className="h-4 w-4" />
                                                         </Button>
                                                     </div>
@@ -529,49 +461,39 @@ export function PaymentModal({ order, onPayment, onClose }: PaymentModalProps) {
                                             </div>
                                         )}
 
-                                        {/* Manual Amount */}
                                         {paymentMode === "manual" && (
-                                            <div className="flex gap-3">
+                                            <div className="flex gap-2">
                                                 <div className="relative flex-1">
                                                     <Input
                                                         type="text"
                                                         value={currentInputAmount}
-                                                        onChange={(e) => handleInputChange(e.target.value)}
+                                                        onChange={e => handleInputChange(e.target.value)}
                                                         placeholder="Monto en efectivo"
-                                                        className="flex-1 text-lg h-11 pl-10 border-input focus:border-primary bg-input"
+                                                        className="pl-7 h-10"
                                                     />
-                                                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-md text-muted-foreground font-bold">$</span>
+                                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                                                 </div>
-                                                <Button
-                                                    onClick={handleManualAdd}
-                                                    disabled={!currentInputAmount || parseFormattedNumber(currentInputAmount) <= 0}
-                                                    className="gap-2 px-6 h-11 text-base shadow-md bg-primary text-primary-foreground hover:bg-primary/90"
-                                                >
-                                                    <Plus className="h-4 w-4" />
-                                                    Agregar
+                                                <Button onClick={handleManualAdd} disabled={!currentInputAmount || parseFormattedNumber(currentInputAmount) <= 0}>
+                                                    <Plus className="h-4 w-4" /> Agregar
                                                 </Button>
                                             </div>
                                         )}
-
                                     </div>
                                 ) : (
-                                    <div className="flex gap-2 p-2 border rounded-md bg-[#1d2440]/60 border-[#222c4a]">
+                                    // Otros métodos
+                                    <div className="flex gap-2">
                                         <div className="relative flex-1">
                                             <Input
                                                 type="text"
                                                 value={currentInputAmount}
-                                                onChange={(e) => handleInputChange(e.target.value)}
-                                                placeholder={`Monto ${selectedMethod?.text}`}
-                                                className="h-8 text-xs pl-6 bg-[#1d2440] border-[#2d3748]"
+                                                onChange={e => handleInputChange(e.target.value)}
+                                                placeholder={`Monto ${selectedMethod.text}`}
+                                                className="pl-7 h-9"
                                             />
-                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-bold">$</span>
+                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                                         </div>
-                                        <Button
-                                            onClick={handleManualAdd}
-                                            disabled={!currentInputAmount || parseFormattedNumber(currentInputAmount) <= 0}
-                                            className="h-8 text-xs bg-primary hover:bg-primary/90"
-                                        >
-                                            <Plus className="h-3 w-3 mr-1" /> Agregar
+                                        <Button onClick={handleManualAdd} disabled={!currentInputAmount || parseFormattedNumber(currentInputAmount) <= 0}>
+                                            <Plus className="h-4 w-4" /> Agregar
                                         </Button>
                                     </div>
                                 )}
@@ -579,53 +501,45 @@ export function PaymentModal({ order, onPayment, onClose }: PaymentModalProps) {
                         )}
                     </div>
 
-                    {/* Balance y Lista de Pagos */}
-                    <div className="md:col-span-3 flex flex-col gap-3">
-                        <Card className="p-4 shadow-lg border border-warning/40 bg-[#1e2538] text-warning-foreground rounded-2xl">
-                            <h3 className="font-bold text-base flex items-center gap-2 text-warning mb-3">
+                    {/* Columna derecha: Balance y Pagos registrados */}
+                    <div className="md:col-span-3 space-y-4">
+                        <Card className="p-3 bg-warning/10 border-warning/30">
+                            <h3 className="font-bold text-sm flex items-center gap-2 text-warning">
                                 <span className="h-2 w-2 bg-warning rounded-full animate-pulse" />
-                                Balance y Cambio
+                                Balance
                             </h3>
-
-                            <div className="space-y-2 text-sm font-medium">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-warning-foreground/70">Total Pagado</span>
-                                    <span className="text-success font-extrabold">{formatPrice(totalPaid)}</span>
+                            <div className="space-y-2 mt-2">
+                                <div className="flex justify-between text-sm">
+                                    <span>Pagado</span>
+                                    <span className="font-bold text-success">{formatCOP(totalPaid)}</span>
                                 </div>
-                                <Separator className="my-2 bg-warning/30" />
-                                <div className="flex justify-between items-center text-lg mt-1">
-                                    <span className="font-bold">Faltante</span>
-                                    <span className={`${remaining > 0 ? 'text-destructive' : 'text-success'} font-extrabold`}>
-                                        {formatPrice(Math.abs(remaining))}
-                                    </span>
+                                <Separator />
+                                <div className="flex justify-between text-lg font-bold">
+                                    <span>Faltante</span>
+                                    <span className={remaining > 0 ? "text-destructive" : "text-success"}>{formatCOP(Math.abs(remaining))}</span>
                                 </div>
                                 {change > 0 && (
-                                    <div className="flex justify-between items-center text-sm pt-2 border-t border-dashed border-warning/40">
-                                        <span className="text-info">Cambio</span>
-                                        <span className="font-bold text-info">{formatPrice(change)}</span>
+                                    <div className="flex justify-between text-sm">
+                                        <span>Cambio</span>
+                                        <span className="font-bold text-info">{formatCOP(change)}</span>
                                     </div>
                                 )}
                             </div>
                         </Card>
 
                         {payments.length > 0 && (
-                            <Card className="p-4 border border-[#2a3459] bg-[#151b29] rounded-2xl">
-                                <h4 className="font-bold text-sm text-primary/80 mb-2">Pagos Registrados</h4>
-                                <div className="space-y-1 text-xs">
-                                    {payments.map((p) => (
-                                        <div key={p.id} className="flex justify-between items-center py-1 border-b border-[#222c4a]/40">
+                            <Card className="p-3">
+                                <h4 className="font-semibold text-sm mb-2">Pagos registrados</h4>
+                                <div className="space-y-2 max-h-48 overflow-y-auto">
+                                    {payments.map(p => (
+                                        <div key={p.id} className="flex justify-between items-center text-sm border-b pb-1">
                                             <div className="flex items-center gap-2">
                                                 {getPaymentIcon(p.metodo.nombre)}
                                                 <span>{p.metodo.text}</span>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <span className="font-bold text-success">{formatPrice(p.valor)}</span>
-                                                <Button
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    onClick={() => removePayment(p.id)}
-                                                    className="h-6 w-6 text-destructive hover:bg-destructive/30"
-                                                >
+                                                <span className="font-bold">{formatCOP(p.valor)}</span>
+                                                <Button variant="ghost" size="icon" onClick={() => removePayment(p.id)} className="h-6 w-6 text-destructive">
                                                     <Trash2 className="h-3 w-3" />
                                                 </Button>
                                             </div>
@@ -637,35 +551,24 @@ export function PaymentModal({ order, onPayment, onClose }: PaymentModalProps) {
                     </div>
                 </div>
 
-                {/* FOOTER */}
-                <div className="p-3 border-t border-[#1b2641] bg-[#1a2035] shrink-0">
-                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
-                        <Button
-                            variant="outline"
-                            onClick={onClose}
-                            className="flex-1 gap-2 h-11 text-sm sm:text-base border-2 border-border text-foreground hover:bg-secondary"
-                            disabled={submitting}
-                        >
-                            <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
-                            Cancelar Venta
+                {/* Footer */}
+                <div className="p-4 border-t shrink-0 bg-muted/10">
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <Button variant="outline" onClick={onClose} disabled={submitting} className="flex-1 h-11">
+                            <ArrowLeft className="h-4 w-4 mr-2" />
+                            Cancelar
                         </Button>
                         <Button
                             onClick={handleCompletePayment}
                             disabled={remaining > 0 || payments.length === 0 || submitting}
-                            className={`flex-1 gap-2 sm:gap-3 h-11 text-sm sm:text-lg font-bold shadow-lg transition-all
-              ${remaining > 0
-                                    ? 'bg-warning text-warning-foreground hover:bg-warning/90'
-                                    : 'bg-success text-success-foreground hover:bg-success/90'}`}
+                            className={`flex-1 h-11 gap-2 ${remaining > 0 ? "bg-warning hover:bg-warning/90" : "bg-success hover:bg-success/90"}`}
                         >
                             {submitting ? (
-                                <>
-                                    <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
-                                    Procesando...
-                                </>
+                                <Loader2 className="h-5 w-5 animate-spin" />
                             ) : (
                                 <>
-                                    <CreditCard className="h-5 w-5 sm:h-6 sm:w-6" />
-                                    {remaining > 0 ? `PAGAR ${formatPrice(remaining)} Faltante` : "Completar Venta"}
+                                    <CreditCard className="h-5 w-5" />
+                                    {remaining > 0 ? `Pagar ${formatCOP(remaining)} faltante` : "Completar venta"}
                                 </>
                             )}
                         </Button>
@@ -673,6 +576,5 @@ export function PaymentModal({ order, onPayment, onClose }: PaymentModalProps) {
                 </div>
             </DialogContent>
         </Dialog>
-    );
-
+    )
 }
