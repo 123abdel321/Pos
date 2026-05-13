@@ -6,16 +6,17 @@ import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Search, Package, Barcode, Warehouse } from "lucide-react"
+import { Search, Package, Barcode, Warehouse, User } from "lucide-react"
 import { Producto, Familia } from '@/types/producto'
 import apiClient from "@/app/api/apiClient"
+
 interface ProductGridProps {
     onProductSelect: (product: Producto, quantity?: number) => void
     bodegaId: number | null
+    selectedCliente: any | null  // Ajusta el tipo según tu definición
 }
 
-export function ProductGrid({ onProductSelect, bodegaId }: ProductGridProps) {
+export function ProductGrid({ onProductSelect, bodegaId, selectedCliente }: ProductGridProps) {
     const [productos, setProductos] = useState<Producto[]>([])
     const [familias, setFamilias] = useState<Familia[]>([])
     const [filteredProducts, setFilteredProducts] = useState<Producto[]>([])
@@ -23,42 +24,33 @@ export function ProductGrid({ onProductSelect, bodegaId }: ProductGridProps) {
     const [searchTerm, setSearchTerm] = useState("")
     const [loading, setLoading] = useState(true)
     const [searching, setSearching] = useState(false)
+    const [actionError, setActionError] = useState<string | null>(null)
     const searchInputRef = useRef<HTMLInputElement>(null)
 
-    // Focus automático
     useEffect(() => {
-        if (searchInputRef.current) {
-            searchInputRef.current.focus()
-        }
+        if (searchInputRef.current) searchInputRef.current.focus()
     }, [])
 
-    // Cargar datos iniciales
-    useEffect(() => {1
+    // Cargar datos iniciales (solo depende de bodega)
+    useEffect(() => {
         const loadInitialData = async () => {
             try {
                 setLoading(true)
-
-                const params: any = {}
-                if (bodegaId) {
-                    params.id_bodega = bodegaId
-                }
 
                 const familiasResponse = await apiClient.get('/familia/combo-familia')
                 const familiasData = familiasResponse.data.data || familiasResponse.data
                 setFamilias(Array.isArray(familiasData) ? familiasData : [])
 
                 if (bodegaId) {
-                    const params = { id_bodega: bodegaId };
-                    const productosResponse = await apiClient.get('/producto/combo-producto', { params });
-                    const productosData = productosResponse.data.data || productosResponse.data;
-                    setProductos(Array.isArray(productosData) ? productosData : []);
-                    setFilteredProducts(Array.isArray(productosData) ? productosData : []);
+                    const params = { id_bodega: bodegaId }
+                    const productosResponse = await apiClient.get('/producto/combo-producto', { params })
+                    const productosData = productosResponse.data.data || productosResponse.data
+                    setProductos(Array.isArray(productosData) ? productosData : [])
+                    setFilteredProducts(Array.isArray(productosData) ? productosData : [])
                 } else {
-                    // Si no hay bodega, limpiar productos
-                    setProductos([]);
-                    setFilteredProducts([]);
+                    setProductos([])
+                    setFilteredProducts([])
                 }
-
             } catch (error) {
                 console.error('Error loading data:', error)
                 setProductos([])
@@ -66,33 +58,26 @@ export function ProductGrid({ onProductSelect, bodegaId }: ProductGridProps) {
                 setFilteredProducts([])
             } finally {
                 setLoading(false)
-                setTimeout(() => {
-                    if (searchInputRef.current) {
-                        searchInputRef.current.focus()
-                    }
-                }, 100)
+                setTimeout(() => searchInputRef.current?.focus(), 100)
             }
         }
 
         loadInitialData()
     }, [bodegaId])
 
-    // Lógica de búsqueda con debounce
+    // Búsqueda con debounce (también depende de bodega)
     useEffect(() => {
         const searchProducts = async () => {
             if (!searchTerm.trim()) {
                 setSearching(true)
                 try {
                     const params: any = {}
-                    if (bodegaId) {
-                        params.id_bodega = bodegaId
-                    }
-
+                    if (bodegaId) params.id_bodega = bodegaId
                     const response = await apiClient.get('/producto/combo-producto', { params })
                     const data = response.data.data || response.data
                     setProductos(Array.isArray(data) ? data : [])
                 } catch (error) {
-                    console.error('Error loading all products:', error)
+                    console.error('Error loading products:', error)
                     setProductos([])
                 } finally {
                     setSearching(false)
@@ -103,10 +88,7 @@ export function ProductGrid({ onProductSelect, bodegaId }: ProductGridProps) {
             try {
                 setSearching(true)
                 const params: any = { search: searchTerm }
-                if (bodegaId) {
-                    params.id_bodega = bodegaId
-                }
-
+                if (bodegaId) params.id_bodega = bodegaId
                 const response = await apiClient.get('/producto/combo-producto', { params })
                 const data = response.data.data || response.data
                 setProductos(Array.isArray(data) ? data : [])
@@ -117,45 +99,56 @@ export function ProductGrid({ onProductSelect, bodegaId }: ProductGridProps) {
             }
         }
 
-        const timeoutId = setTimeout(() => {
-            searchProducts()
-        }, 500)
-
+        const timeoutId = setTimeout(searchProducts, 500)
         return () => clearTimeout(timeoutId)
     }, [searchTerm, bodegaId])
 
-    // Lógica de filtrado por categoría
+    // Filtro por categoría
     useEffect(() => {
         let filtered = productos
-
         if (selectedCategory !== "todos") {
-            filtered = filtered.filter((product) =>
+            filtered = filtered.filter(product =>
                 product.familia.nombre.toLowerCase().includes(selectedCategory.toLowerCase())
             )
         }
-
         setFilteredProducts(filtered)
     }, [productos, selectedCategory])
 
-    // Handlers y Helpers
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.ctrlKey && e.key === '/') {
             e.preventDefault()
-            if (searchInputRef.current) {
-                searchInputRef.current.focus()
-            }
+            searchInputRef.current?.focus()
         }
-
         if (e.key === 'Escape') {
             setSearchTerm("")
-            if (searchInputRef.current) {
-                searchInputRef.current.focus()
-            }
+            searchInputRef.current?.focus()
+        }
+    }
+
+    const handleProductSelect = (product: Producto) => {
+        if (!bodegaId) {
+            window.dispatchEvent(new CustomEvent('showError', {
+                detail: { message: 'Selecciona una bodega primero', type: 'warning', html: true, autoClose: true, duration: 5000 }
+            }));
+            return;
+        }
+        if (!selectedCliente) {
+            window.dispatchEvent(new CustomEvent('showError', {
+                detail: { message: 'Selecciona un cliente primero', type: 'warning', html: true, autoClose: true, duration: 5000 }
+            }));
+            return;
+        }
+        onProductSelect(product);
+        
+        // Solo enfocar si NO es dispositivo táctil (evita teclado emergente en móvil/tablet)
+        const isTouch = window.matchMedia('(pointer: coarse)').matches;
+        if (!isTouch) {
+            setTimeout(() => searchInputRef.current?.focus(), 100);
         }
     }
 
     const categories = [
-        { id: "todos", name: "TODOS", active: true },
+        { id: "todos", name: "TODOS" },
         ...familias.map(familia => ({
             id: familia.nombre.toLowerCase(),
             name: familia.nombre.toUpperCase()
@@ -172,7 +165,7 @@ export function ProductGrid({ onProductSelect, bodegaId }: ProductGridProps) {
 
     const getStockStatus = (quantity: number) => {
         if (quantity <= 0) return { color: "destructive", text: "Sin stock" }
-        if (quantity <= 5 && quantity > 0) return { color: "warning", text: "Poco stock" }
+        if (quantity <= 5) return { color: "warning", text: "Poco stock" }
         return { color: "success", text: "En stock" }
     }
 
@@ -186,6 +179,7 @@ export function ProductGrid({ onProductSelect, bodegaId }: ProductGridProps) {
         return inventarios.reduce((total, inv) => total + Number.parseFloat(inv.cantidad), 0)
     }
 
+    // Si no hay bodega, mostrar mensaje (no se pueden cargar productos)
     if (!bodegaId) {
         return (
             <div className="flex flex-col items-center justify-center h-full p-8 text-center">
@@ -196,16 +190,21 @@ export function ProductGrid({ onProductSelect, bodegaId }: ProductGridProps) {
         )
     }
 
-    // FIX DE SINTAXIS APLICADO: El paréntesis de apertura se coloca
-    // en la misma línea que 'return' para evitar el error de ASI.
     return (
-        <div className="p-3 sm:p-4"> {/* Menos padding en móvil */}
-            {/* Search MEJORADO para código de barras */}
+        <div className="p-3 sm:p-4">
+            {/* Mensaje de error temporal */}
+            {actionError && (
+                <div className="mb-3 text-center text-xs bg-destructive/10 text-destructive p-2 rounded-md animate-pulse">
+                    {actionError}
+                </div>
+            )}
+
+            {/* Barra de búsqueda */}
             <div className="relative mb-4">
                 <div className="flex items-center gap-2">
                     <Barcode className="h-5 w-5 text-primary" />
                     <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
                             ref={searchInputRef}
                             placeholder="Escanear código de barras o buscar producto..."
@@ -213,45 +212,26 @@ export function ProductGrid({ onProductSelect, bodegaId }: ProductGridProps) {
                             onChange={(e) => setSearchTerm(e.target.value)}
                             onKeyDown={handleKeyDown}
                             autoFocus
-                            className="
-                                pl-10 pr-10
-                                text-base sm:text-lg
-                                py-2 h-10 sm:h-12
-                                bg-input
-                                border border-border
-                                shadow-sm
-                                transition-all duration-200
-                                focus:ring-2 focus:ring-primary/40
-                                focus:border-primary
-                                focus:shadow-md
-                                dark:bg-[#0f172a]-500
-                                dark:border-[#334155]
-                                dark:shadow-black/30
-                            "
+                            className="pl-10 pr-10 text-base sm:text-lg py-2 h-10 sm:h-12 bg-input border border-border shadow-sm focus:ring-2 focus:ring-primary/40 focus:border-primary"
                         />
                         {(searching || (searchTerm === "" && loading)) && (
-                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
                             </div>
                         )}
                     </div>
                 </div>
-
-                {/* Indicador de shortcuts */}
-                {/* <div className="text-xs text-muted-foreground mt-1 flex justify-between">
-          <span>Presiona Esc para limpiar</span>
-          <span>Ctrl + / para focus</span>
-        </div> */}
             </div>
 
             {/* Categorías */}
             <div className="flex flex-wrap gap-1 mb-4 max-h-16 overflow-y-auto">
                 <span
                     onClick={() => setSelectedCategory("todos")}
-                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs cursor-pointer transition-colors ${selectedCategory === "todos"
+                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs cursor-pointer transition-colors ${
+                        selectedCategory === "todos"
                             ? "bg-primary text-primary-foreground"
                             : "bg-muted text-muted-foreground hover:bg-muted/80"
-                        }`}
+                    }`}
                 >
                     TODOS
                 </span>
@@ -259,10 +239,11 @@ export function ProductGrid({ onProductSelect, bodegaId }: ProductGridProps) {
                     <span
                         key={category.id}
                         onClick={() => setSelectedCategory(category.id)}
-                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs cursor-pointer transition-colors ${selectedCategory === category.id
+                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs cursor-pointer transition-colors ${
+                            selectedCategory === category.id
                                 ? "bg-primary text-primary-foreground"
                                 : "bg-muted text-muted-foreground hover:bg-muted/80"
-                            }`}
+                        }`}
                     >
                         {category.name.split(' ')[0]}
                     </span>
@@ -274,7 +255,7 @@ export function ProductGrid({ onProductSelect, bodegaId }: ProductGridProps) {
                 )}
             </div>
 
-            {/* Products Count */}
+            {/* Contador y limpiar búsqueda */}
             <div className="mb-4 flex justify-between items-center border-b pb-2">
                 <p className="text-sm font-semibold text-foreground">
                     Productos encontrados: {filteredProducts.length}
@@ -285,9 +266,7 @@ export function ProductGrid({ onProductSelect, bodegaId }: ProductGridProps) {
                         size="sm"
                         onClick={() => {
                             setSearchTerm("")
-                            if (searchInputRef.current) {
-                                searchInputRef.current.focus()
-                            }
+                            searchInputRef.current?.focus()
                         }}
                         className="text-xs"
                     >
@@ -296,9 +275,9 @@ export function ProductGrid({ onProductSelect, bodegaId }: ProductGridProps) {
                 )}
             </div>
 
-            {/* Products Grid - CLASES RESPONSIVAS AJUSTADAS */}
+            {/* Grid de productos */}
             {loading || searching ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3"> {/* Ajustes de columnas */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                     {Array.from({ length: 10 }).map((_, i) => (
                         <Card key={i} className="p-4 animate-pulse">
                             <div className="h-24 bg-muted rounded mb-3"></div>
@@ -309,7 +288,7 @@ export function ProductGrid({ onProductSelect, bodegaId }: ProductGridProps) {
                     ))}
                 </div>
             ) : (
-                <div className="grid grid-cols-[repeat(auto-fit,minmax(138px,138px))] gap-2"> {/* AJUSTE DE RESPONSIVIDAD */}
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(138px,138px))] gap-2">
                     {filteredProducts.map((product) => {
                         const totalStock = getTotalStock(product.inventarios)
                         const stockStatus = getStockStatus(totalStock)
@@ -318,25 +297,17 @@ export function ProductGrid({ onProductSelect, bodegaId }: ProductGridProps) {
                             <Card
                                 key={product.id}
                                 className="w-full max-w-[138px] cursor-pointer transition-all hover:shadow-lg group border overflow-hidden grid grid-rows-[100px_1fr] h-full"
-                                onClick={(e) => {
-                                    e.stopPropagation()
-                                    onProductSelect(product)
-                                    setTimeout(() => {
-                                        searchInputRef.current?.focus()
-                                    }, 100)
-                                }}
+                                onClick={() => handleProductSelect(product)}
                             >
-                                {/* Header con Imagen, Familia y Código */}
                                 <div className="h-24 bg-muted relative overflow-hidden">
                                     {product.familia?.nombre && (
                                         <div className="absolute top-1 left-1 bg-black/40 text-white text-[10px] px-2 py-0.5 rounded-sm z-10 font-medium uppercase tracking-wider backdrop-blur-[1px]">
                                             {product.familia.nombre}
                                         </div>
                                     )}
-
                                     {product.imagen ? (
                                         <img
-                                            src={`${getImageUrl(product.imagen)}`}
+                                            src={getImageUrl(product.imagen) || ''}
                                             alt={product.nombre}
                                             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.05]"
                                             onError={(e) => {
@@ -349,56 +320,43 @@ export function ProductGrid({ onProductSelect, bodegaId }: ProductGridProps) {
                                         </div>
                                     )}
                                 </div>
-
-                                {/* Contenido */}
                                 <div className="p-2 grid grid-rows-[auto_1fr_auto] gap-1 h-full">
                                     <h3 className="font-bold text-xs line-clamp-2 leading-snug text-center min-h-[2rem] flex items-center justify-center">
                                         {product.nombre}
                                     </h3>
-
-                                    {/* Ajuste de precio mejorado */}
                                     <div className="text-center flex items-center justify-center py-1">
                                         {(() => {
-                                            const precioNumber = Number(product.precio);
-                                            const formattedPrice = formatPrice(`${precioNumber}`);
-                                            const isHighPrice = precioNumber >= 1000000;
-
+                                            const precioNumber = Number(product.precio)
+                                            const formattedPrice = formatPrice(`${precioNumber}`)
+                                            const isHighPrice = precioNumber >= 1000000
                                             return (
-                                                <div
-                                                    className={`${isHighPrice ? "text-base" : "text-lg"
-                                                        } font-bold text-primary/90 transition-opacity duration-300 group-hover:text-primary`}
-                                                >
+                                                <div className={`${isHighPrice ? "text-base" : "text-lg"} font-bold text-primary/90 group-hover:text-primary`}>
                                                     {formattedPrice}
                                                 </div>
-                                            );
+                                            )
                                         })()}
                                     </div>
-
                                     <div className="flex items-center gap-2 mt-auto border-t pt-2">
-                                        <div
-                                            className={`w-2 h-2 rounded-full ${stockStatus.color === "destructive"
-                                                    ? "bg-destructive"
-                                                    : stockStatus.color === "warning"
-                                                        ? "bg-warning"
-                                                        : "bg-success"
-                                                }`}
-                                        ></div>
-                                        <span className="text-xs text-muted-foreground flex-1">
-                                            {stockStatus.text}
-                                        </span>
+                                        <div className={`w-2 h-2 rounded-full ${
+                                            stockStatus.color === "destructive"
+                                                ? "bg-destructive"
+                                                : stockStatus.color === "warning"
+                                                ? "bg-warning"
+                                                : "bg-success"
+                                        }`} />
+                                        <span className="text-xs text-muted-foreground flex-1">{stockStatus.text}</span>
                                         <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded">
                                             {totalStock}
                                         </span>
                                     </div>
                                 </div>
                             </Card>
-                        );
-
+                        )
                     })}
                 </div>
             )}
 
-            {/* Empty State */}
+            {/* Estado vacío */}
             {filteredProducts.length === 0 && !loading && !searching && (
                 <div className="text-center py-12">
                     <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
@@ -409,9 +367,7 @@ export function ProductGrid({ onProductSelect, bodegaId }: ProductGridProps) {
                             size="sm"
                             onClick={() => {
                                 setSearchTerm("")
-                                if (searchInputRef.current) {
-                                    searchInputRef.current.focus()
-                                }
+                                searchInputRef.current?.focus()
                             }}
                         >
                             Ver todos los productos

@@ -1587,6 +1587,7 @@ function POSContent() {
 						<ProductGrid
 							onProductSelect={addProductToOrder}
 							bodegaId={selectedBodega?.id ?? null}
+							selectedCliente={selectedCliente}
 						/>
 					</div>
 				</div>
