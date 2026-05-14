@@ -274,21 +274,21 @@ export function ProductGrid({ onProductSelect, bodegaId, selectedCliente }: Prod
                     </Button>
                 )}
             </div>
-
-            {/* Grid de productos */}
+            
+            {/* Grid de productos - Responsivo */}
             {loading || searching ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
                     {Array.from({ length: 10 }).map((_, i) => (
-                        <Card key={i} className="p-4 animate-pulse">
-                            <div className="h-24 bg-muted rounded mb-3"></div>
-                            <div className="h-4 bg-muted rounded mb-2"></div>
-                            <div className="h-4 bg-muted rounded w-2/3 mb-2"></div>
-                            <div className="h-6 bg-muted rounded w-1/2"></div>
+                        <Card key={i} className="p-2 sm:p-3 animate-pulse">
+                            <div className="h-24 sm:h-28 bg-muted rounded mb-2"></div>
+                            <div className="h-3 bg-muted rounded mb-1"></div>
+                            <div className="h-3 bg-muted rounded w-2/3 mb-2"></div>
+                            <div className="h-5 bg-muted rounded w-1/2"></div>
                         </Card>
                     ))}
                 </div>
             ) : (
-                <div className="grid grid-cols-[repeat(auto-fit,minmax(138px,138px))] gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
                     {filteredProducts.map((product) => {
                         const totalStock = getTotalStock(product.inventarios)
                         const stockStatus = getStockStatus(totalStock)
@@ -296,12 +296,13 @@ export function ProductGrid({ onProductSelect, bodegaId, selectedCliente }: Prod
                         return (
                             <Card
                                 key={product.id}
-                                className="w-full max-w-[138px] cursor-pointer transition-all hover:shadow-lg group border overflow-hidden grid grid-rows-[100px_1fr] h-full"
+                                className="cursor-pointer transition-all hover:shadow-lg group border overflow-hidden flex flex-col h-full"
                                 onClick={() => handleProductSelect(product)}
                             >
-                                <div className="h-24 bg-muted relative overflow-hidden">
+                                {/* Imagen / placeholder */}
+                                <div className="relative bg-muted aspect-square w-full overflow-hidden">
                                     {product.familia?.nombre && (
-                                        <div className="absolute top-1 left-1 bg-black/40 text-white text-[10px] px-2 py-0.5 rounded-sm z-10 font-medium uppercase tracking-wider backdrop-blur-[1px]">
+                                        <div className="absolute top-1 left-1 bg-black/50 text-white text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-sm z-10 font-medium uppercase tracking-wider backdrop-blur-[1px]">
                                             {product.familia.nombre}
                                         </div>
                                     )}
@@ -309,43 +310,47 @@ export function ProductGrid({ onProductSelect, bodegaId, selectedCliente }: Prod
                                         <img
                                             src={getImageUrl(product.imagen) || ''}
                                             alt={product.nombre}
-                                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.05]"
+                                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                                             onError={(e) => {
                                                 e.currentTarget.style.display = 'none'
                                             }}
                                         />
                                     ) : (
                                         <div className="absolute inset-0 flex items-center justify-center">
-                                            <Package className="h-10 w-10 text-muted-foreground" />
+                                            <Package className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground" />
                                         </div>
                                     )}
                                 </div>
-                                <div className="p-2 grid grid-rows-[auto_1fr_auto] gap-1 h-full">
-                                    <h3 className="font-bold text-xs line-clamp-2 leading-snug text-center min-h-[2rem] flex items-center justify-center">
+
+                                {/* Contenido */}
+                                <div className="p-2 sm:p-3 flex flex-col flex-1">
+                                    <h3 className="font-bold text-xs sm:text-sm line-clamp-2 leading-tight text-center min-h-[2rem]">
                                         {product.nombre}
                                     </h3>
-                                    <div className="text-center flex items-center justify-center py-1">
+                                    <div className="text-center my-1 sm:my-2">
                                         {(() => {
                                             const precioNumber = Number(product.precio)
                                             const formattedPrice = formatPrice(`${precioNumber}`)
                                             const isHighPrice = precioNumber >= 1000000
                                             return (
-                                                <div className={`${isHighPrice ? "text-base" : "text-lg"} font-bold text-primary/90 group-hover:text-primary`}>
+                                                <div className={`${isHighPrice ? "text-sm sm:text-base" : "text-base sm:text-lg"} font-bold text-primary/90 group-hover:text-primary`}>
                                                     {formattedPrice}
                                                 </div>
                                             )
                                         })()}
                                     </div>
-                                    <div className="flex items-center gap-2 mt-auto border-t pt-2">
-                                        <div className={`w-2 h-2 rounded-full ${
-                                            stockStatus.color === "destructive"
-                                                ? "bg-destructive"
-                                                : stockStatus.color === "warning"
-                                                ? "bg-warning"
-                                                : "bg-success"
-                                        }`} />
-                                        <span className="text-xs text-muted-foreground flex-1">{stockStatus.text}</span>
-                                        <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                                    <div className="flex items-center justify-between gap-1 mt-auto border-t pt-1.5 sm:pt-2 text-[10px] sm:text-xs">
+                                        <div className="flex items-center gap-1">
+                                            <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${
+                                                stockStatus.color === "destructive"
+                                                    ? "bg-destructive"
+                                                    : stockStatus.color === "warning"
+                                                    ? "bg-warning"
+                                                    : "bg-success"
+                                            }`} />
+                                            <span className="text-muted-foreground">{stockStatus.text}</span>
+                                        </div>
+                                        <span className="font-mono bg-muted px-1.5 py-0.5 rounded">
                                             {totalStock}
                                         </span>
                                     </div>

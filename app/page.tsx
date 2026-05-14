@@ -1440,6 +1440,7 @@ function POSContent() {
 							<div className="h-7 w-7 rounded-lg bg-primary/20 flex items-center justify-center">
 								<span className="text-xs font-black text-primary">
 									{empresa?.razon_social?.charAt(0) || 'P'}
+									{empresa?.razon_social?.charAt(1) || 'P'}
 								</span>
 							</div>
 						)}
@@ -1451,8 +1452,8 @@ function POSContent() {
 						<DropdownMenuTrigger asChild>
 							<Button variant="outline" size="sm" className="h-8 gap-1 px-2">
 								<Warehouse className="h-4 w-4" />
-								<span className="hidden sm:inline text-xs truncate max-w-[100px]">
-									{selectedBodega ? `${selectedBodega.codigo}` : "Bodega"}
+								<span className="text-xs truncate max-w-[100px]">
+									{selectedBodega ? `${selectedBodega.codigo} - ${selectedBodega.nombre}` : "Bodega"}
 								</span>
 								<ChevronDown className="h-3 w-3" />
 							</Button>
