@@ -85,7 +85,22 @@ export function OrderPanel({
     selectedBodega,
     ivaIncluido,
 }: OrderPanelProps) {
-    const [isExpanded, setIsExpanded] = useState(true)
+    // Inicializar colapsado en móvil, expandido en escritorio
+    const [isExpanded, setIsExpanded] = useState(() => {
+        if (typeof window !== "undefined") {
+            return window.innerWidth >= 768
+        }
+        return true
+    })
+
+    // Ajustar cuando cambie el tamaño de la ventana
+    useEffect(() => {
+        const handleResize = () => {
+            setIsExpanded(window.innerWidth >= 768)
+        }
+        window.addEventListener("resize", handleResize)
+        return () => window.removeEventListener("resize", handleResize)
+    }, [])
 
     const [searchBodega, setSearchBodega] = useState("")
     const [searchCliente, setSearchCliente] = useState("")
@@ -160,7 +175,7 @@ export function OrderPanel({
         return () => clearTimeout(delayDebounceFn)
     }, [searchCliente])
 
-    // Búsqueda de bodegas (mantenido igual)
+    // Búsqueda de bodegas
     useEffect(() => {
         if (searchBodega.trim() === "") {
             setBodegasResultado([])
@@ -257,7 +272,6 @@ export function OrderPanel({
 
     // --- Lógica para crear cliente ---
     const handleCreateCliente = async () => {
-        // Validaciones básicas
         const errors: Record<string, string> = {}
         if (!clienteForm.id_tipo_documento) errors.id_tipo_documento = "Seleccione tipo de documento"
         if (!clienteForm.numero_documento) errors.numero_documento = "Número de documento requerido"
@@ -280,7 +294,6 @@ export function OrderPanel({
                 direccion: clienteForm.direccion || null,
                 email: clienteForm.email || null,
                 telefono_1: clienteForm.telefono_1 || null,
-                // Valores por defecto para campos obligatorios no incluidos en el formulario
                 proveedor: false,
                 sumar_aiu: false,
                 porcentaje_aiu: 0,
@@ -288,12 +301,9 @@ export function OrderPanel({
             }
 
             const response = await apiClient.post("/nit", payload)
-            
             if (response.data.success) {
                 const nuevoCliente = response.data.data
-                // Cerrar modal
                 setShowCreateClienteModal(false)
-                // Limpiar formulario
                 setClienteForm({
                     id_tipo_documento: tiposDocumento[0]?.id.toString() || "",
                     numero_documento: "",
@@ -306,11 +316,9 @@ export function OrderPanel({
                     email: "",
                     telefono_1: "",
                 })
-                // Seleccionar automáticamente el nuevo cliente
                 if (onUpdateCliente) {
                     onUpdateCliente(nuevoCliente)
                 }
-                // Opcional: mostrar notificación de éxito
                 window.dispatchEvent(
                     new CustomEvent("showError", {
                         detail: {
@@ -349,7 +357,6 @@ export function OrderPanel({
 
     const handleInputChange = (field: keyof typeof clienteForm, value: string) => {
         setClienteForm(prev => ({ ...prev, [field]: value }))
-        // Limpiar error de ese campo si existe
         if (formErrors[field]) {
             setFormErrors(prev => {
                 const newErrors = { ...prev }
@@ -359,7 +366,6 @@ export function OrderPanel({
         }
     }
 
-    // RENDER PRINCIPAL
     return (
         <>
             <div
@@ -400,7 +406,7 @@ export function OrderPanel({
                     </div>
                 </div>
 
-                {/* SELECTOR DE CLIENTE */}
+                {/* SELECTOR DE CLIENTE (solo cuando expandido) */}
                 {isExpanded && (
                     <div className="p-2 border-b border-border flex-shrink-0">
                         <div className="space-y-1">
@@ -505,7 +511,7 @@ export function OrderPanel({
                     </div>
                 )}
 
-                {/* MODO COLAPSADO */}
+                {/* MODO COLAPSADO (resumen) */}
                 {!isExpanded && currentOrder && (
                     <div className="flex-1 flex flex-col justify-between p-2 items-center max-h-149">
                         <div className="space-y-3 pt-4">

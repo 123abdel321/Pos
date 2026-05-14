@@ -11,6 +11,7 @@ import { OrderPanel } from "@/components/order-panel"
 import { PaymentModal } from "@/components/payment-modal"
 import { OrdersTableView } from "@/components/orders-table-view"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { useTheme } from "@/components/theme-provider"
 import { useAuthStorage } from '@/hooks/useAuthStorage'
 import { useRealtimeOrders } from '@/hooks/useRealtimeOrders'
@@ -1417,74 +1418,35 @@ function POSContent() {
 	return (
 		<div className="min-h-screen bg-background">
 			<header className="border-b border-border bg-card/70 backdrop-blur-xl sticky top-0 z-50">
-				<div className="flex h-14 items-center justify-between px-6">
+				<div className="flex h-14 items-center justify-between px-4 sm:px-6">
 					
-					{/* SECCIÓN IZQUIERDA: Marca & Status */}
-					<div className="flex items-center gap-6"> 
-						<div className="flex items-center gap-3">
-							{empresa?.logo ? (
-							<div className="relative flex-shrink-0">
-								<div className="absolute inset-0 bg-primary/20 rounded-lg blur-[2px]" />
-								<img 
-									src={
-										empresa.logo.startsWith('http') 
-										? empresa.logo 
-										: `https://porfaolioerpbucket.nyc3.digitaloceanspaces.com/${empresa.logo.replace(/^\//, '')}`
-									} 
-									alt={empresa.razon_social}
-									className="relative h-8 w-8 rounded-lg object-cover border border-white/20 shadow-sm ring-1 ring-border/50"
-								/>
-							</div>
-							) : (
-							<div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20 shadow-inner">
-								<span className="text-xs font-black text-primary italic">
-								{empresa?.razon_social?.charAt(0) || 'P'}
+					{/* Logo + nombre empresa */}
+					<div className="flex items-center gap-2">
+						{empresa?.logo ? (
+							<img src={empresa.logo} className="h-7 w-7 rounded-lg object-cover" alt="logo" />
+						) : (
+							<div className="h-7 w-7 rounded-lg bg-primary/20 flex items-center justify-center">
+								<span className="text-xs font-black text-primary">
+									{empresa?.razon_social?.charAt(0) || 'P'}
 								</span>
 							</div>
-							)}
-							
-							<div className="flex flex-col -space-y-0.5">
-								<h1 className="text-sm font-bold tracking-tight text-foreground flex items-center gap-1.5">
-									{empresa?.razon_social || "POS SYSTEM"}
-									<span className="h-1 w-1 rounded-full bg-green-500 animate-pulse" title="Sistema Activo" />
-								</h1>
-								<div className="flex items-center gap-2">
-									<span className="text-[10px] font-bold text-muted-foreground/60 tracking-[0.05em] uppercase">
-										SISTEMA POS
-									</span>
-									{ivaIncluido && (
-									<div className="flex items-center">
-										<span className="text-muted-foreground/30 text-[10px] mr-1.5">•</span>
-										<span className="text-[9px] font-bold leading-none text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded-[4px] uppercase tracking-tighter">
-										IVA INCLUIDO
-										</span>
-									</div>
-									)}
-								</div>
-
-							</div>
-						</div>
+						)}
+						<h1 className="text-sm font-bold hidden sm:block">{empresa?.razon_social || "POS"}</h1>
 					</div>
 
-					{/* SECCIÓN DERECHA: Acciones & Perfil Rápido */}
-					<div className="flex items-center gap-2">
-
-						<DropdownMenu>
-							<DropdownMenuTrigger asChild>
-								<Button variant="outline" size="sm" className="h-9 gap-1">
+					{/* Selector de bodega completo */}
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button variant="outline" size="sm" className="h-8 gap-1 px-2">
 								<Warehouse className="h-4 w-4" />
-								{selectedBodega ? (
-									<span className="max-w-[100px] truncate text-xs">
-									{selectedBodega.codigo} - {selectedBodega.nombre}
-									</span>
-								) : (
-									<span className="text-xs">Bodega</span>
-								)}
+								<span className="hidden sm:inline text-xs truncate max-w-[100px]">
+									{selectedBodega ? `${selectedBodega.codigo}` : "Bodega"}
+								</span>
 								<ChevronDown className="h-3 w-3" />
-								</Button>
-							</DropdownMenuTrigger>
-							<DropdownMenuContent className="w-64 p-1">
-								<div className="relative mb-1">
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent className="w-64 p-1">
+							<div className="relative mb-1">
 								<Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
 								<Input
 									placeholder="Buscar bodega..."
@@ -1492,180 +1454,155 @@ function POSContent() {
 									onChange={(e) => setSearchBodega(e.target.value)}
 									className="pl-6 h-6 text-xs"
 								/>
-								</div>
-								<div className="max-h-44 overflow-auto">
-									{loadingBodegas ? (
-										<div className="text-center py-2">
+							</div>
+							<div className="max-h-44 overflow-auto">
+								{loadingBodegas ? (
+									<div className="text-center py-2">
 										<div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mx-auto"></div>
 										<p className="text-[10px] mt-1 text-muted-foreground">Cargando bodegas...</p>
-										</div>
-									) : bodegasResultado.length > 0 ? (
-										bodegasResultado.map((bodega) => (
+									</div>
+								) : bodegasResultado.length > 0 ? (
+									bodegasResultado.map((bodega) => (
 										<DropdownMenuItem
 											key={bodega.id}
 											onClick={() => {
-											setSearchBodega("");
-											handleUpdateBodega(bodega);
+												setSearchBodega("");
+												handleUpdateBodega(bodega);
 											}}
 											className="flex flex-col items-start p-2 mb-1"
 										>
 											<div className="font-medium text-[11px] leading-tight">
-											{bodega.codigo} - {bodega.nombre}
+												{bodega.codigo} - {bodega.nombre}
 											</div>
 											<div className="text-[10px] text-muted-foreground">{bodega.ubicacion}</div>
 										</DropdownMenuItem>
-										))
-									) : (
-										// Si no hay bodegas en la lista completa o el filtro no devuelve nada
-										<div className="text-center py-2 text-muted-foreground text-[11px]">
-										{allBodegas.length === 0
-											? "No tiene bodegas asignadas"
-											: "Sin resultados"}
-										</div>
-									)}
-								</div>
-							</DropdownMenuContent>
-						</DropdownMenu>
-					
-						{/* Indicador de Pedidos Pendientes (Fuera del menú para visibilidad inmediata) */}
-						<Button
-							variant="ghost"
-							size="sm"
-							onClick={() => setShowOrdersTable(true)}
-							className="h-9 px-3 gap-2 text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all hidden md:flex"
-						>
-							<Table className="h-4 w-4" />
-							<span className="text-xs font-semibold">Pedidos</span>
-							<span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-black text-primary-foreground">
-							{orders.filter((o) => o.estado === "pendiente").length}
-							</span>
-						</Button>
-
-						<div className="w-[1px] h-5 bg-border/60 mx-1 hidden sm:block" />
-
-						{/* Botón de Tema (Icono más fino) */}
-						<Button
-							variant="ghost"
-							size="icon"
-							onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-							className="h-8 w-8 rounded-full text-muted-foreground hover:bg-accent transition-transform active:scale-95"
-						>
-							{theme === "dark" ? <Sun className="h-[1.1rem] w-[1.1rem]" /> : <Moon className="h-[1.1rem] w-[1.1rem]" />}
-						</Button>
-
-						{/* Menú de Usuario con Avatar */}
-						<DropdownMenu>
-							<DropdownMenuTrigger asChild>
-							<Button 
-								variant="ghost" 
-								className="h-9 pl-1 pr-2 gap-2 rounded-full border border-transparent hover:border-border hover:bg-muted/50 transition-all"
-							>
-								<div className="relative h-8 w-8">
-									{/* Sombra base */}
-									<div className="absolute inset-0 rounded-full bg-primary/30 blur-[3px] opacity-60"></div>
-									
-									{/* Bola 3D */}
-									<div className="relative h-8 w-8 rounded-full bg-gradient-to-br from-primary/25 via-primary/30 to-primary/20 
-													border-t border-primary/40 border-r border-primary/30 
-													border-b border-primary/10 border-l border-primary/20
-													shadow-[inset_1px_1px_2px_rgba(255,255,255,0.3),inset_-1px_-1px_2px_rgba(0,0,0,0.1)] 
-													flex items-center justify-center">
-										
-										{/* Brillo */}
-										<div className="absolute top-1 left-1 h-2 w-2 bg-white/25 rounded-full blur-[1px]"></div>
-										
-										{/* Texto */}
-										<span className="text-xs font-black">
-										{user?.firstname ? user.firstname.slice(0, 2).toUpperCase() : 'US'}
-										</span>
+									))
+								) : (
+									<div className="text-center py-2 text-muted-foreground text-[11px]">
+										{allBodegas.length === 0 ? "No tiene bodegas asignadas" : "Sin resultados"}
 									</div>
-									</div>
-								<Menu className="h-3.5 w-3.5 text-muted-foreground" />
-							</Button>
-							</DropdownMenuTrigger>
-							
-							<DropdownMenuContent align="end" className="w-64 p-1.5 shadow-2xl border-border/80 ring-1 ring-black/5">
-							<div className="px-3 py-3 mb-1 bg-gradient-to-b from-muted/50 to-transparent rounded-lg border border-border/40">
-								<p className="text-[9px] font-bold text-muted-foreground/70 uppercase tracking-widest mb-2">Sesión Iniciada</p>
-								<div className="flex items-center gap-3">
-								<div className="flex flex-col min-w-0">
-									<span className="text-sm font-bold truncate text-foreground leading-none">
-									{user?.username || 'Usuario'}
-									</span>
-									<span className="text-[11px] text-muted-foreground truncate mt-1">
-									{user?.email || 'admin@sistema.com'}
-									</span>
-								</div>
-								</div>
+								)}
 							</div>
-							
-							<DropdownMenuItem 
-								onClick={() => setShowOrdersTable(true)}
-								className="md:hidden rounded-md py-2 px-3 focus:bg-primary/5 cursor-pointer"
-							>
-								<Table className="h-4 w-4 mr-2 text-muted-foreground" />
-								<span className="text-sm font-medium">Gestión de Pedidos</span>
-							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
 
-							<DropdownMenuSeparator className="opacity-50" />
-							
-							<DropdownMenuItem 
-								onClick={handleLogout}
-								className="rounded-md py-2 px-3 text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer font-medium"
-							>
-								<LogOut className="h-4 w-4 mr-2" />
-								<span className="text-sm">Cerrar Sesión</span>
-							</DropdownMenuItem>
-							</DropdownMenuContent>
-						</DropdownMenu>
+					{/* Botón de pedidos pendientes (solo en desktop/tablet) */}
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={() => setShowOrdersTable(true)}
+						className="hidden md:flex h-8 gap-1 text-muted-foreground"
+					>
+						<Table className="h-4 w-4" />
+						<span className="text-xs">Pedidos</span>
+						<Badge variant="secondary" className="h-5 px-1 text-[10px]">
+							{orders.filter(o => o.estado === "pendiente").length}
+						</Badge>
+					</Button>
 
-					</div>
+					{/* Botón de tema (solo escritorio) */}
+					<Button
+						variant="ghost"
+						size="icon"
+						onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+						className="hidden sm:flex h-8 w-8"
+					>
+						{theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+					</Button>
+
+					{/* Menú de usuario */}
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button variant="ghost" className="h-8 w-8 rounded-full p-0">
+								<div className="relative h-7 w-7 rounded-full bg-primary/20 flex items-center justify-center">
+									<span className="text-xs font-bold">
+										{user?.firstname ? user.firstname.slice(0, 2).toUpperCase() : 'US'}
+									</span>
+								</div>
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end" className="w-56">
+							<DropdownMenuLabel>{user?.username || 'Usuario'}</DropdownMenuLabel>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="sm:hidden">
+								{theme === "dark" ? "Modo claro" : "Modo oscuro"}
+							</DropdownMenuItem>
+							<DropdownMenuItem onClick={() => setShowOrdersTable(true)} className="md:hidden">
+								Ver pedidos pendientes ({orders.filter(o => o.estado === "pendiente").length})
+							</DropdownMenuItem>
+							<DropdownMenuItem onClick={handleLogout} className="text-destructive">
+								Cerrar sesión
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
 				</div>
 			</header>
 
-			<div className="flex h-[calc(100vh-65px)] overflow-hidden">
+			{/* Layout principal responsivo */}
+			<div className="flex flex-col lg:flex-row h-[calc(100vh-65px)] overflow-hidden relative">
+			
+			{/* Panel de gestión de pedidos (solo escritorio grande) */}
+			<div className="hidden lg:block w-72 xl:w-80 flex-shrink-0 border-r border-border overflow-y-auto bg-muted/20">
 				<OrdersManagerPanel
-					orders={orders}
-					currentOrder={currentOrder}
-					onSelectOrder={selectOrder}
-					onNewOrder={() => createNewOrder()}
-					loadingOrderId={loadingOrderId}
+				orders={orders}
+				currentOrder={currentOrder}
+				onSelectOrder={selectOrder}
+				onNewOrder={() => createNewOrder()}
+				loadingOrderId={loadingOrderId}
 				/>
+			</div>
 
-				<div className="flex-1 flex flex-col overflow-hidden">
-					
-					<LocationSelector
-						selectedLocation={selectedLocation}
-						onLocationSelect={handleUpdateUbicacion}
-						occupiedLocationIds={occupiedLocationIds}
-					/>
-
-					<div className="flex-1 overflow-auto">
-						<ProductGrid
-							onProductSelect={addProductToOrder}
-							bodegaId={selectedBodega?.id ?? null}
-							selectedCliente={selectedCliente}
-						/>
-					</div>
-				</div>
-
-				<div className="h-screen flex">
-					<OrderPanel
-						currentOrder={currentOrder}
-						onCompleteOrder={completeOrder}
-						onNewOrder={() => createNewOrder()}
-						onUpdateQuantity={updateProductQuantity}
-						onRemoveProduct={removeProductFromOrder}
-						onUpdateProduct={updateProductInOrder}
-						onUpdateCliente={handleUpdateCliente}
-						onCancelOrder={cancelCurrentOrder}
-						selectedCliente={selectedCliente}
-						selectedBodega={selectedBodega}
-						ivaIncluido={ivaIncluido}
-					/>
+			{/* Área central: LocationSelector + ProductGrid - SIEMPRE VISIBLE en móvil y escritorio */}
+			<div className="flex-1 flex flex-col overflow-hidden min-h-0">
+				<LocationSelector
+				selectedLocation={selectedLocation}
+				onLocationSelect={handleUpdateUbicacion}
+				occupiedLocationIds={occupiedLocationIds}
+				/>
+				<div className="flex-1 overflow-auto">
+				<ProductGrid
+					onProductSelect={addProductToOrder}
+					bodegaId={selectedBodega?.id ?? null}
+					selectedCliente={selectedCliente}
+				/>
 				</div>
 			</div>
 
+			{/* OrderPanel: en móvil se muestra al final (después del grid) y sin altura forzada */}
+			<div className="flex-shrink-0">
+				<OrderPanel
+				currentOrder={currentOrder}
+				onCompleteOrder={completeOrder}
+				onNewOrder={() => createNewOrder()}
+				onUpdateQuantity={updateProductQuantity}
+				onRemoveProduct={removeProductFromOrder}
+				onUpdateProduct={updateProductInOrder}
+				onUpdateCliente={handleUpdateCliente}
+				onCancelOrder={cancelCurrentOrder}
+				selectedCliente={selectedCliente}
+				selectedBodega={selectedBodega}
+				ivaIncluido={ivaIncluido}
+				/>
+			</div>
+			</div>
+
+			{/* Botón flotante para pedidos (móvil/tablet) */}
+			<div className="lg:hidden fixed bottom-4 right-4 z-40">
+				<Button
+					size="icon"
+					className="h-12 w-12 rounded-full shadow-lg bg-primary text-primary-foreground"
+					onClick={() => setShowOrdersTable(true)}
+				>
+					<Table className="h-5 w-5" />
+					{orders.filter(o => o.estado === "pendiente").length > 0 && (
+						<span className="absolute -top-1 -right-1 h-5 min-w-[20px] rounded-full bg-destructive text-[10px] font-bold flex items-center justify-center px-1">
+							{orders.filter(o => o.estado === "pendiente").length}
+						</span>
+					)}
+				</Button>
+			</div>
+
+			{/* Modales */}
 			{showOrdersTable && (
 				<OrdersTableView
 					orders={orders}
@@ -1674,7 +1611,6 @@ function POSContent() {
 					onClose={() => setShowOrdersTable(false)}
 				/>
 			)}
-
 			{showPaymentModal && currentOrder && (
 				<PaymentModal
 					order={currentOrder}
