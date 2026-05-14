@@ -3,11 +3,12 @@ import axios from 'axios';
 const apiClient = axios.create({
     baseURL: 'https://app.portafolioerp.com/api',
     // baseURL: 'http://localhost:8000/api',
+    // baseURL: 'http://192.168.1.2:8000/api',
     headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
     },
-    timeout: 10000, // 🔥 Agregar timeout para evitar requests colgadas
+    timeout: 50000, // 🔥 Agregar timeout para evitar requests colgadas
 });
 
 // Interceptor para añadir el token a las peticiones

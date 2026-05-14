@@ -309,7 +309,6 @@ export default function RootLayout({
             </AuthProvider>
           </ThemeProvider>
         </Suspense>
-        <Analytics />
       </body>
     </html>
   );

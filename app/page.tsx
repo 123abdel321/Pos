@@ -1,5 +1,3 @@
-// app/page.tsx
-
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
@@ -25,7 +23,10 @@ import {
 	Warehouse,
 	ChevronDown,
 	Search,
-} from "lucide-react"
+	ShoppingCart,
+	ClipboardList,
+	Package,
+} from "lucide-react" // Añadidos iconos para la barra móvil
 import { useAuth } from "@/contexts/AuthContext"
 import ProtectedRoute from "@/components/sistem/ProtectedRoute"
 import LoginPage from "@/app/login/page"
@@ -213,13 +214,12 @@ function POSContent() {
 	const [orders, setOrders] = useState<Order[]>([])
 	const [empresa, setEmpresa] = useState<Empresa | null>(null)
 	const { user, logout, isAuthenticated, loading } = useAuth()
-	const [showOrdersTable, setShowOrdersTable] = useState(false)
+	const [showOrdersTable, setShowOrdersTable] = useState(false) // Ya no se usará en móvil, pero se mantiene para escritorio
 	const [showPaymentModal, setShowPaymentModal] = useState(false) 
 	const [currentOrder, setCurrentOrder] = useState<Order | null>(null)
 	const [loadingOrderId, setLoadingOrderId] = useState<string | null>(null)
 	const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null)
 	const [selectedLocation, setSelectedLocation] = useState<Ubicacion | null>(null);
-	// NUEVOS ESTADOS PARA LA CONFIGURACIÓN
 	const [topeRetencion, setTopeRetencion] = useState<number>(0)
 	const [ivaIncluido, setIvaIncluido] = useState<boolean>(false)
 	const [clienteDefecto, setClienteDefecto] = useState<Cliente | null>(null)
@@ -228,12 +228,24 @@ function POSContent() {
 	const [validationConfig, setValidationConfig] = useState<ValidationConfig | null>(null)
 	const [empresaToken, setEmpresaToken] = useState<string | null>(null)
 
-	// Búsqueda de bodegas para el selector del header
+	// Búsqueda de bodegas
 	const [allBodegas, setAllBodegas] = useState<Bodega[]>([]);
 	const [bodegasResultado, setBodegasResultado] = useState<Bodega[]>([]);
 	const [searchBodega, setSearchBodega] = useState('');
 	const [loadingBodegas, setLoadingBodegas] = useState(false);
 	const [selectedBodega, setSelectedBodega] = useState<Bodega | null>(null);
+
+	// NUEVO: Estado para la pestaña activa en móvil/tablet
+	const [activeTab, setActiveTab] = useState<'products' | 'order' | 'orders'>('products');
+	// NUEVO: Detectar si es pantalla pequeña (< 1024px)
+	const [isMobile, setIsMobile] = useState(false);
+
+	useEffect(() => {
+		const checkScreen = () => setIsMobile(window.innerWidth < 1024);
+		checkScreen();
+		window.addEventListener('resize', checkScreen);
+		return () => window.removeEventListener('resize', checkScreen);
+	}, []);
 
 	// MOSTRAR UBICACIONES ACTIVAS
 	const occupiedLocationIds = useMemo(() => {
@@ -1418,8 +1430,8 @@ function POSContent() {
 	return (
 		<div className="min-h-screen bg-background">
 			<header className="border-b border-border bg-card/70 backdrop-blur-xl sticky top-0 z-50">
+				{/* Header sin cambios (igual que en tu código actual) */}
 				<div className="flex h-14 items-center justify-between px-4 sm:px-6">
-					
 					{/* Logo + nombre empresa */}
 					<div className="flex items-center gap-2">
 						{empresa?.logo ? (
@@ -1434,7 +1446,7 @@ function POSContent() {
 						<h1 className="text-sm font-bold hidden sm:block">{empresa?.razon_social || "POS"}</h1>
 					</div>
 
-					{/* Selector de bodega completo */}
+					{/* Selector de bodega */}
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
 							<Button variant="outline" size="sm" className="h-8 gap-1 px-2">
@@ -1500,7 +1512,7 @@ function POSContent() {
 						</Badge>
 					</Button>
 
-					{/* Botón de tema (solo escritorio) */}
+					{/* Botón de tema */}
 					<Button
 						variant="ghost"
 						size="icon"
@@ -1538,71 +1550,145 @@ function POSContent() {
 				</div>
 			</header>
 
-			{/* Layout principal responsivo */}
-			<div className="flex flex-col lg:flex-row h-[calc(100vh-65px)] overflow-hidden relative">
-			
-			{/* Panel de gestión de pedidos (solo escritorio grande) */}
-			<div className="hidden lg:block w-72 xl:w-80 flex-shrink-0 border-r border-border overflow-y-auto bg-muted/20">
-				<OrdersManagerPanel
-				orders={orders}
-				currentOrder={currentOrder}
-				onSelectOrder={selectOrder}
-				onNewOrder={() => createNewOrder()}
-				loadingOrderId={loadingOrderId}
-				/>
-			</div>
+			{/* ========== LAYOUT PARA ESCRITORIO (>= lg) ========== */}
+			<div className="hidden lg:flex flex-row h-[calc(100vh-65px)] overflow-hidden relative">
+				{/* Panel de gestión de pedidos */}
+				<div className="flex-shrink-0 border-r border-border overflow-y-auto bg-muted/20">
+					<OrdersManagerPanel
+						orders={orders}
+						currentOrder={currentOrder}
+						onSelectOrder={selectOrder}
+						onNewOrder={() => createNewOrder()}
+						loadingOrderId={loadingOrderId}
+					/>
+				</div>
 
-			{/* Área central: LocationSelector + ProductGrid - SIEMPRE VISIBLE en móvil y escritorio */}
-			<div className="flex-1 flex flex-col overflow-hidden min-h-0">
-				<LocationSelector
-				selectedLocation={selectedLocation}
-				onLocationSelect={handleUpdateUbicacion}
-				occupiedLocationIds={occupiedLocationIds}
-				/>
-				<div className="flex-1 overflow-auto">
-				<ProductGrid
-					onProductSelect={addProductToOrder}
-					bodegaId={selectedBodega?.id ?? null}
-					selectedCliente={selectedCliente}
-				/>
+				{/* Área central */}
+				<div className="flex-1 flex flex-col overflow-hidden min-h-0">
+					<LocationSelector
+						selectedLocation={selectedLocation}
+						onLocationSelect={handleUpdateUbicacion}
+						occupiedLocationIds={occupiedLocationIds}
+					/>
+					<div className="flex-1 overflow-auto">
+						<ProductGrid
+							onProductSelect={addProductToOrder}
+							bodegaId={selectedBodega?.id ?? null}
+							selectedCliente={selectedCliente}
+						/>
+					</div>
+				</div>
+
+				{/* OrderPanel */}
+				<div className="flex-shrink-0">
+					<OrderPanel
+						currentOrder={currentOrder}
+						onCompleteOrder={completeOrder}
+						onNewOrder={() => createNewOrder()}
+						onUpdateQuantity={updateProductQuantity}
+						onRemoveProduct={removeProductFromOrder}
+						onUpdateProduct={updateProductInOrder}
+						onUpdateCliente={handleUpdateCliente}
+						onCancelOrder={cancelCurrentOrder}
+						selectedCliente={selectedCliente}
+						selectedBodega={selectedBodega}
+						ivaIncluido={ivaIncluido}
+					/>
 				</div>
 			</div>
 
-			{/* OrderPanel: en móvil se muestra al final (después del grid) y sin altura forzada */}
-			<div className="flex-shrink-0">
-				<OrderPanel
-				currentOrder={currentOrder}
-				onCompleteOrder={completeOrder}
-				onNewOrder={() => createNewOrder()}
-				onUpdateQuantity={updateProductQuantity}
-				onRemoveProduct={removeProductFromOrder}
-				onUpdateProduct={updateProductInOrder}
-				onUpdateCliente={handleUpdateCliente}
-				onCancelOrder={cancelCurrentOrder}
-				selectedCliente={selectedCliente}
-				selectedBodega={selectedBodega}
-				ivaIncluido={ivaIncluido}
-				/>
-			</div>
-			</div>
+			{/* ========== LAYOUT PARA MÓVIL/TABLET (< lg) ========== */}
+			<div className="lg:hidden flex flex-col h-[calc(100vh-65px)] overflow-hidden relative">
+				{/* LocationSelector solo cuando no estamos en la pestaña de pedidos (opcional) */}
+				{activeTab !== 'orders' && (
+					<div className="flex-shrink-0 p-2 border-b border-border">
+						<LocationSelector
+							selectedLocation={selectedLocation}
+							onLocationSelect={handleUpdateUbicacion}
+							occupiedLocationIds={occupiedLocationIds}
+						/>
+					</div>
+				)}
 
-			{/* Botón flotante para pedidos (móvil/tablet) */}
-			<div className="lg:hidden fixed bottom-4 right-4 z-40">
-				<Button
-					size="icon"
-					className="h-12 w-12 rounded-full shadow-lg bg-primary text-primary-foreground"
-					onClick={() => setShowOrdersTable(true)}
-				>
-					<Table className="h-5 w-5" />
-					{orders.filter(o => o.estado === "pendiente").length > 0 && (
-						<span className="absolute -top-1 -right-1 h-5 min-w-[20px] rounded-full bg-destructive text-[10px] font-bold flex items-center justify-center px-1">
-							{orders.filter(o => o.estado === "pendiente").length}
-						</span>
+				{/* Contenido según pestaña activa */}
+				<div className="flex-1 overflow-auto">
+					{activeTab === 'products' && (
+						<ProductGrid
+							onProductSelect={addProductToOrder}
+							bodegaId={selectedBodega?.id ?? null}
+							selectedCliente={selectedCliente}
+						/>
 					)}
-				</Button>
+					{activeTab === 'order' && (
+						<OrderPanel
+							currentOrder={currentOrder}
+							onCompleteOrder={completeOrder}
+							onNewOrder={() => createNewOrder()}
+							onUpdateQuantity={updateProductQuantity}
+							onRemoveProduct={removeProductFromOrder}
+							onUpdateProduct={updateProductInOrder}
+							onUpdateCliente={handleUpdateCliente}
+							onCancelOrder={cancelCurrentOrder}
+							selectedCliente={selectedCliente}
+							selectedBodega={selectedBodega}
+							ivaIncluido={ivaIncluido}
+							disableCollapse={true}
+						/>
+					)}
+					{activeTab === 'orders' && (
+						<OrdersManagerPanel
+							orders={orders}
+							currentOrder={currentOrder}
+							onSelectOrder={selectOrder}
+							onNewOrder={() => createNewOrder()}
+							loadingOrderId={loadingOrderId}
+							disableCollapse={true}
+						/>
+					)}
+				</div>
+
+				{/* Barra inferior con 3 botones (pestañas) */}
+				<div className="flex-shrink-0 border-t border-border bg-background/90 backdrop-blur-sm p-2">
+					<div className="flex justify-around gap-2">
+						<Button
+							variant={activeTab === 'products' ? 'default' : 'ghost'}
+							className="flex-1 flex flex-col items-center gap-1 h-auto py-2"
+							onClick={() => setActiveTab('products')}
+						>
+							<Package className="h-5 w-5" />
+							<span className="text-xs">Productos</span>
+						</Button>
+						<Button
+							variant={activeTab === 'order' ? 'default' : 'ghost'}
+							className="flex-1 flex flex-col items-center gap-1 h-auto py-2 relative"
+							onClick={() => setActiveTab('order')}
+						>
+							<ShoppingCart className="h-5 w-5" />
+							<span className="text-xs">Pedido</span>
+							{currentOrder && currentOrder.productos.length > 0 && (
+								<Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px]">
+									{currentOrder.productos.length}
+								</Badge>
+							)}
+						</Button>
+						<Button
+							variant={activeTab === 'orders' ? 'default' : 'ghost'}
+							className="flex-1 flex flex-col items-center gap-1 h-auto py-2 relative"
+							onClick={() => setActiveTab('orders')}
+						>
+							<ClipboardList className="h-5 w-5" />
+							<span className="text-xs">Pedidos</span>
+							{orders.filter(o => o.estado === 'pendiente').length > 0 && (
+								<Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px]">
+									{orders.filter(o => o.estado === 'pendiente').length}
+								</Badge>
+							)}
+						</Button>
+					</div>
+				</div>
 			</div>
 
-			{/* Modales */}
+			{/* Modales (para escritorio y consistencia) */}
 			{showOrdersTable && (
 				<OrdersTableView
 					orders={orders}

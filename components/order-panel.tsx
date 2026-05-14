@@ -62,6 +62,7 @@ interface OrderPanelProps {
     selectedCliente: Cliente | null
     selectedBodega: Bodega | null
     ivaIncluido: boolean
+    disableCollapse?: boolean
 }
 
 // Interfaz para tipo de documento
@@ -84,9 +85,11 @@ export function OrderPanel({
     selectedCliente,
     selectedBodega,
     ivaIncluido,
+    disableCollapse = false,
 }: OrderPanelProps) {
     // Inicializar colapsado en móvil, expandido en escritorio
     const [isExpanded, setIsExpanded] = useState(() => {
+        if (disableCollapse) return true;
         if (typeof window !== "undefined") {
             return window.innerWidth >= 768
         }
@@ -95,12 +98,13 @@ export function OrderPanel({
 
     // Ajustar cuando cambie el tamaño de la ventana
     useEffect(() => {
+        if (disableCollapse) return;
         const handleResize = () => {
             setIsExpanded(window.innerWidth >= 768)
         }
         window.addEventListener("resize", handleResize)
         return () => window.removeEventListener("resize", handleResize)
-    }, [])
+    }, [disableCollapse])
 
     const [searchBodega, setSearchBodega] = useState("")
     const [searchCliente, setSearchCliente] = useState("")
@@ -394,15 +398,17 @@ export function OrderPanel({
                                 )}
                             </div>
                         )}
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setIsExpanded(!isExpanded)}
-                            className={`h-7 w-7 p-0 ${isExpanded ? "" : "mx-auto"}`}
-                            title={isExpanded ? "Colapsar Vista" : "Expandir Vista"}
-                        >
-                            {isExpanded ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-                        </Button>
+                        {!disableCollapse && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setIsExpanded(!isExpanded)}
+                                className={`h-7 w-7 p-0 ${isExpanded ? "" : "mx-auto"}`}
+                                title={isExpanded ? "Colapsar Vista" : "Expandir Vista"}
+                            >
+                                {isExpanded ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                            </Button>
+                        )}
                     </div>
                 </div>
 
