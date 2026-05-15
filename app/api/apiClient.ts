@@ -1,6 +1,8 @@
 import axios from 'axios';
 
 const apiClient = axios.create({
+    // baseURL: 'https://app.portafolioerp.com/api',
+    // baseURL: 'http://localhost:8000/api',
     baseURL: process.env.ERP_URL ? `${process.env.ERP_URL}/api` : 'http://localhost:8000/api',
     headers: {
         'Content-Type': 'application/json',
