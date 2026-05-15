@@ -763,129 +763,186 @@ export function OrderPanel({
 
             {/* MODAL PARA CREAR CLIENTE */}
             <Dialog open={showCreateClienteModal} onOpenChange={setShowCreateClienteModal}>
-                <DialogContent className="sm:max-w-md md:max-w-lg">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <UserPlus className="h-5 w-5 text-primary" />
-                            Nuevo Cliente
-                        </DialogTitle>
+                <DialogContent className="sm:max-w-md md:max-w-xl lg:max-w-2xl p-0 overflow-hidden rounded-xl bg-background border-border/50 shadow-2xl">
+                    {/* Header con gradiente */}
+                    <DialogHeader className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-b border-border/50 p-5">
+                    <DialogTitle className="flex items-center gap-3 text-xl">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/20 text-primary">
+                        <UserPlus className="h-5 w-5" />
+                        </div>
+                        <span className="bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+                        Nuevo Cliente
+                        </span>
+                    </DialogTitle>
                     </DialogHeader>
-                    <div className="grid gap-3 py-2 max-h-[60vh] overflow-y-auto">
-                        <div className="grid grid-cols-2 gap-2">
-                            <div className="space-y-1">
-                                <Label className="text-xs">Tipo documento *</Label>
-                                <Select
-                                    value={clienteForm.id_tipo_documento}
-                                    onValueChange={(val) => handleInputChange("id_tipo_documento", val)}
-                                    disabled={loadingTipos}
-                                >
-                                    <SelectTrigger className="h-8 text-xs">
-                                        <SelectValue placeholder="Seleccionar" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {tiposDocumento.map((tipo) => (
-                                            <SelectItem key={tipo.id} value={tipo.id.toString()} className="text-xs">
-                                                {tipo.nombre}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                {formErrors.id_tipo_documento && (
-                                    <p className="text-[10px] text-destructive">{formErrors.id_tipo_documento}</p>
-                                )}
-                            </div>
-                            <div className="space-y-1">
-                                <Label className="text-xs">Número documento *</Label>
-                                <Input
-                                    value={clienteForm.numero_documento}
-                                    onChange={(e) => handleInputChange("numero_documento", e.target.value)}
-                                    className="h-8 text-xs"
-                                    placeholder="NIT / CC"
-                                />
-                                {formErrors.numero_documento && (
-                                    <p className="text-[10px] text-destructive">{formErrors.numero_documento}</p>
-                                )}
-                            </div>
+
+                    {/* Formulario con scroll */}
+                    <div className="max-h-[calc(80vh-120px)] overflow-y-auto p-5 space-y-4">
+                    {/* Fila 1: Tipo documento + Número documento */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                        <Label className="text-sm font-medium flex items-center gap-1">
+                            Tipo documento <span className="text-destructive">*</span>
+                        </Label>
+                        <Select
+                            value={clienteForm.id_tipo_documento}
+                            onValueChange={(val) => handleInputChange("id_tipo_documento", val)}
+                            disabled={loadingTipos}
+                        >
+                            <SelectTrigger className="h-10 text-sm border-muted-foreground/20 bg-background">
+                            <SelectValue placeholder="Seleccionar" />
+                            </SelectTrigger>
+                            <SelectContent>
+                            {tiposDocumento.map((tipo) => (
+                                <SelectItem key={tipo.id} value={tipo.id.toString()}>
+                                {tipo.nombre}
+                                </SelectItem>
+                            ))}
+                            </SelectContent>
+                        </Select>
+                        {formErrors.id_tipo_documento && (
+                            <p className="text-xs text-destructive flex items-center gap-1">
+                            <span className="inline-block h-1 w-1 rounded-full bg-destructive" />
+                            {formErrors.id_tipo_documento}
+                            </p>
+                        )}
                         </div>
-                        <div className="grid grid-cols-2 gap-2">
-                            <div className="space-y-1">
-                                <Label className="text-xs">Primer nombre</Label>
-                                <Input
-                                    value={clienteForm.primer_nombre}
-                                    onChange={(e) => handleInputChange("primer_nombre", e.target.value)}
-                                    className="h-8 text-xs"
-                                />
-                            </div>
-                            <div className="space-y-1">
-                                <Label className="text-xs">Segundo nombre</Label>
-                                <Input
-                                    value={clienteForm.otros_nombres}
-                                    onChange={(e) => handleInputChange("otros_nombres", e.target.value)}
-                                    className="h-8 text-xs"
-                                />
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                            <div className="space-y-1">
-                                <Label className="text-xs">Primer apellido</Label>
-                                <Input
-                                    value={clienteForm.primer_apellido}
-                                    onChange={(e) => handleInputChange("primer_apellido", e.target.value)}
-                                    className="h-8 text-xs"
-                                />
-                            </div>
-                            <div className="space-y-1">
-                                <Label className="text-xs">Segundo apellido</Label>
-                                <Input
-                                    value={clienteForm.segundo_apellido}
-                                    onChange={(e) => handleInputChange("segundo_apellido", e.target.value)}
-                                    className="h-8 text-xs"
-                                />
-                            </div>
-                        </div>
-                        <div className="space-y-1">
-                            <Label className="text-xs">Razón social</Label>
-                            <Input
-                                value={clienteForm.razon_social}
-                                onChange={(e) => handleInputChange("razon_social", e.target.value)}
-                                className="h-8 text-xs"
-                            />
-                        </div>
-                        <div className="space-y-1">
-                            <Label className="text-xs">Dirección</Label>
-                            <Input
-                                value={clienteForm.direccion}
-                                onChange={(e) => handleInputChange("direccion", e.target.value)}
-                                className="h-8 text-xs"
-                            />
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                            <div className="space-y-1">
-                                <Label className="text-xs">Email</Label>
-                                <Input
-                                    type="email"
-                                    value={clienteForm.email}
-                                    onChange={(e) => handleInputChange("email", e.target.value)}
-                                    className="h-8 text-xs"
-                                />
-                            </div>
-                            <div className="space-y-1">
-                                <Label className="text-xs">Teléfono</Label>
-                                <Input
-                                    value={clienteForm.telefono_1}
-                                    onChange={(e) => handleInputChange("telefono_1", e.target.value)}
-                                    className="h-8 text-xs"
-                                />
-                            </div>
+                        <div className="space-y-1.5">
+                        <Label className="text-sm font-medium flex items-center gap-1">
+                            Número documento <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                            value={clienteForm.numero_documento}
+                            onChange={(e) => handleInputChange("numero_documento", e.target.value)}
+                            className="h-10 text-sm border-muted-foreground/20 bg-background"
+                            placeholder="NIT / CC / CE"
+                        />
+                        {formErrors.numero_documento && (
+                            <p className="text-xs text-destructive flex items-center gap-1">
+                            <span className="inline-block h-1 w-1 rounded-full bg-destructive" />
+                            {formErrors.numero_documento}
+                            </p>
+                        )}
                         </div>
                     </div>
-                    <DialogFooter className="gap-2">
-                        <Button variant="outline" onClick={() => setShowCreateClienteModal(false)} disabled={creatingCliente}>
-                            Cancelar
-                        </Button>
-                        <Button onClick={handleCreateCliente} disabled={creatingCliente}>
-                            {creatingCliente ? "Creando..." : "Crear Cliente"}
-                        </Button>
+
+                    {/* Fila 2: Nombres */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                        <Label className="text-sm font-medium">Primer nombre</Label>
+                        <Input
+                            value={clienteForm.primer_nombre}
+                            onChange={(e) => handleInputChange("primer_nombre", e.target.value)}
+                            className="h-10 text-sm border-muted-foreground/20 bg-background"
+                            placeholder="Ingrese primer nombre"
+                        />
+                        </div>
+                        <div className="space-y-1.5">
+                        <Label className="text-sm font-medium">Segundo nombre</Label>
+                        <Input
+                            value={clienteForm.otros_nombres}
+                            onChange={(e) => handleInputChange("otros_nombres", e.target.value)}
+                            className="h-10 text-sm border-muted-foreground/20 bg-background"
+                            placeholder="Ingrese segundo nombre"
+                        />
+                        </div>
+                    </div>
+
+                    {/* Fila 3: Apellidos */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                        <Label className="text-sm font-medium">Primer apellido</Label>
+                        <Input
+                            value={clienteForm.primer_apellido}
+                            onChange={(e) => handleInputChange("primer_apellido", e.target.value)}
+                            className="h-10 text-sm border-muted-foreground/20 bg-background"
+                            placeholder="Ingrese primer apellido"
+                        />
+                        </div>
+                        <div className="space-y-1.5">
+                        <Label className="text-sm font-medium">Segundo apellido</Label>
+                        <Input
+                            value={clienteForm.segundo_apellido}
+                            onChange={(e) => handleInputChange("segundo_apellido", e.target.value)}
+                            className="h-10 text-sm border-muted-foreground/20 bg-background"
+                            placeholder="Ingrese segundo apellido"
+                        />
+                        </div>
+                    </div>
+
+                    {/* Razón social */}
+                    <div className="space-y-1.5">
+                        <Label className="text-sm font-medium">Razón social</Label>
+                        <Input
+                        value={clienteForm.razon_social}
+                        onChange={(e) => handleInputChange("razon_social", e.target.value)}
+                        className="h-10 text-sm border-muted-foreground/20 bg-background"
+                        placeholder="Ingrese razón social (si aplica)"
+                        />
+                    </div>
+
+                    {/* Dirección */}
+                    <div className="space-y-1.5">
+                        <Label className="text-sm font-medium">Dirección</Label>
+                        <Input
+                        value={clienteForm.direccion}
+                        onChange={(e) => handleInputChange("direccion", e.target.value)}
+                        className="h-10 text-sm border-muted-foreground/20 bg-background"
+                        placeholder="Calle, número, colonia"
+                        />
+                    </div>
+
+                    {/* Email y Teléfono */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                        <Label className="text-sm font-medium">Correo electrónico</Label>
+                        <Input
+                            type="email"
+                            value={clienteForm.email}
+                            onChange={(e) => handleInputChange("email", e.target.value)}
+                            className="h-10 text-sm border-muted-foreground/20 bg-background"
+                            placeholder="cliente@ejemplo.com"
+                        />
+                        </div>
+                        <div className="space-y-1.5">
+                        <Label className="text-sm font-medium">Teléfono</Label>
+                        <Input
+                            value={clienteForm.telefono_1}
+                            onChange={(e) => handleInputChange("telefono_1", e.target.value)}
+                            className="h-10 text-sm border-muted-foreground/20 bg-background"
+                            placeholder="(123) 456-7890"
+                        />
+                        </div>
+                    </div>
+                    </div>
+
+                    {/* Footer con botones */}
+                    <DialogFooter className="flex flex-col sm:flex-row gap-3 p-5 border-t border-border/50 bg-muted/10">
+                    <Button
+                        variant="outline"
+                        onClick={() => setShowCreateClienteModal(false)}
+                        disabled={creatingCliente}
+                        className="sm:flex-1 h-10 gap-2 border-muted-foreground/20 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/50 transition-all"
+                    >
+                        Cancelar
+                    </Button>
+                    <Button
+                        onClick={handleCreateCliente}
+                        disabled={creatingCliente}
+                        className="sm:flex-1 h-10 gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary shadow-md hover:shadow-lg transition-all"
+                    >
+                        {creatingCliente ? (
+                        <>
+                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                            Creando cliente...
+                        </>
+                        ) : (
+                        <>
+                            <UserPlus className="h-4 w-4" />
+                            Crear Cliente
+                        </>
+                        )}
+                    </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
