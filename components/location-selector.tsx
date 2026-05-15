@@ -48,7 +48,7 @@ export function LocationSelector({
     if (ubicaciones.length === 0 && !loading && !searchTerm) return null;
 
     return (
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 p-2">
             {/* Encabezado compacto */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
