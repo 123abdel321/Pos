@@ -1606,7 +1606,7 @@ function POSContent() {
 			<div className="lg:hidden flex flex-col h-[calc(100vh-65px)] overflow-hidden relative">
 				{/* LocationSelector solo cuando no estamos en la pestaña de pedidos (opcional) */}
 				{activeTab !== 'orders' && activeTab !== 'order' && (
-					<div className="flex-shrink-0 p-2 border-b border-border">
+					<div className="flex-shrink-0 border-b border-border">
 						<LocationSelector
 							selectedLocation={selectedLocation}
 							onLocationSelect={handleUpdateUbicacion}
