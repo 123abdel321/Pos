@@ -1435,7 +1435,11 @@ function POSContent() {
 					{/* Logo + nombre empresa */}
 					<div className="flex items-center gap-2">
 						{empresa?.logo ? (
-							<img src={empresa.logo} className="h-7 w-7 rounded-lg object-cover" alt="logo" />
+							<img 
+								src={empresa.logo.startsWith('http') ? empresa.logo : `https://porfaolioerpbucket.nyc3.digitaloceanspaces.com/${empresa.logo}`} 
+								className="h-7 w-7 rounded-lg object-cover" 
+								alt="logo" 
+							/>
 						) : (
 							<div className="h-7 w-7 rounded-lg bg-primary/20 flex items-center justify-center">
 								<span className="text-xs font-black text-primary">
@@ -1601,7 +1605,7 @@ function POSContent() {
 			{/* ========== LAYOUT PARA MÓVIL/TABLET (< lg) ========== */}
 			<div className="lg:hidden flex flex-col h-[calc(100vh-65px)] overflow-hidden relative">
 				{/* LocationSelector solo cuando no estamos en la pestaña de pedidos (opcional) */}
-				{activeTab !== 'orders' && (
+				{activeTab !== 'orders' && activeTab !== 'order' && (
 					<div className="flex-shrink-0 p-2 border-b border-border">
 						<LocationSelector
 							selectedLocation={selectedLocation}
@@ -1649,42 +1653,69 @@ function POSContent() {
 				</div>
 
 				{/* Barra inferior con 3 botones (pestañas) */}
-				<div className="flex-shrink-0 border-t border-border bg-background/90 backdrop-blur-sm p-2">
-					<div className="flex justify-around gap-2">
-						<Button
-							variant={activeTab === 'products' ? 'default' : 'ghost'}
-							className="flex-1 flex flex-col items-center gap-1 h-auto py-2"
-							onClick={() => setActiveTab('products')}
+				<div className="bg-background/95 backdrop-blur-md border-t border-border/50 shadow-lg rounded-t-2xl">
+					<div className="flex items-stretch justify-around p-1.5 gap-1">
+						{/* Productos */}
+						<button
+						onClick={() => setActiveTab('products')}
+						className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 rounded-xl transition-all duration-200 ${
+							activeTab === 'products'
+							? 'bg-primary/15 text-primary shadow-sm ring-1 ring-primary/20'
+							: 'text-muted-foreground hover:bg-muted/40 active:scale-95'
+						}`}
 						>
-							<Package className="h-5 w-5" />
-							<span className="text-xs">Productos</span>
-						</Button>
-						<Button
-							variant={activeTab === 'order' ? 'default' : 'ghost'}
-							className="flex-1 flex flex-col items-center gap-1 h-auto py-2 relative"
-							onClick={() => setActiveTab('order')}
+						<Package className={`h-5 w-5 ${activeTab === 'products' ? 'text-primary' : ''}`} />
+						<span className="text-[11px] font-medium">Productos</span>
+						</button>
+
+						{/* Pedido actual */}
+						<button
+						onClick={() => setActiveTab('order')}
+						className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 rounded-xl transition-all duration-200 relative ${
+							activeTab === 'order'
+							? 'bg-primary/15 text-primary shadow-sm ring-1 ring-primary/20'
+							: 'text-muted-foreground hover:bg-muted/40 active:scale-95'
+						}`}
 						>
-							<ShoppingCart className="h-5 w-5" />
-							<span className="text-xs">Pedido</span>
+						<div className="relative">
+							<ShoppingCart className={`h-5 w-5 ${activeTab === 'order' ? 'text-primary' : ''}`} />
 							{currentOrder && currentOrder.productos.length > 0 && (
-								<Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px]">
-									{currentOrder.productos.length}
-								</Badge>
+							<span className="absolute -top-2 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
+								{currentOrder.productos.length}
+							</span>
 							)}
-						</Button>
-						<Button
-							variant={activeTab === 'orders' ? 'default' : 'ghost'}
-							className="flex-1 flex flex-col items-center gap-1 h-auto py-2 relative"
-							onClick={() => setActiveTab('orders')}
+						</div>
+						<span className="text-[11px] font-medium">Pedido</span>
+						{currentOrder && currentOrder.total > 0 && (
+							<span className="text-[10px] font-bold text-primary leading-tight mt-0.5">
+							{new Intl.NumberFormat("es-CO", {
+								style: "currency",
+								currency: "COP",
+								minimumFractionDigits: 0,
+							}).format(currentOrder.total)}
+							</span>
+						)}
+						</button>
+
+						{/* Lista de pedidos */}
+						<button
+						onClick={() => setActiveTab('orders')}
+						className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 rounded-xl transition-all duration-200 relative ${
+							activeTab === 'orders'
+							? 'bg-primary/15 text-primary shadow-sm ring-1 ring-primary/20'
+							: 'text-muted-foreground hover:bg-muted/40 active:scale-95'
+						}`}
 						>
-							<ClipboardList className="h-5 w-5" />
-							<span className="text-xs">Pedidos</span>
+						<div className="relative">
+							<ClipboardList className={`h-5 w-5 ${activeTab === 'orders' ? 'text-primary' : ''}`} />
 							{orders.filter(o => o.estado === 'pendiente').length > 0 && (
-								<Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px]">
-									{orders.filter(o => o.estado === 'pendiente').length}
-								</Badge>
+							<span className="absolute -top-2 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
+								{orders.filter(o => o.estado === 'pendiente').length}
+							</span>
 							)}
-						</Button>
+						</div>
+						<span className="text-[11px] font-medium">Pedidos</span>
+						</button>
 					</div>
 				</div>
 			</div>

@@ -256,7 +256,7 @@ export function ProductGrid({ onProductSelect, bodegaId, selectedCliente }: Prod
             </div>
 
             {/* Contador y limpiar búsqueda */}
-            <div className="mb-4 flex justify-between items-center border-b pb-2">
+            <div className="mb-4 flex justify-between items-center">
                 <p className="text-sm font-semibold text-foreground">
                     Productos encontrados: {filteredProducts.length}
                 </p>

@@ -183,3 +183,53 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ============================================
+   SCROLLBAR PERSONALIZADO (oculto por defecto)
+   ============================================ */
+
+/* WebKit (Chrome, Edge, Safari) */
+* {
+  scrollbar-width: thin; /* Firefox: ancho fino */
+  scrollbar-color: transparent transparent; /* Firefox: transparente */
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+  background: transparent;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 10px;
+  transition: background 0.2s ease;
+}
+
+/* Mostrar scrollbar cuando el elemento tiene hover o está activo (scrolleando) */
+*:hover::-webkit-scrollbar-thumb,
+*:focus::-webkit-scrollbar-thumb,
+*:active::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.35);
+}
+
+*:hover::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.6);
+}
+
+/* Firefox: mostrar al hacer hover sobre el elemento */
+*:hover {
+  scrollbar-color: hsl(var(--primary) / 0.35) transparent;
+}
+
+/* Ajuste adicional para que se vea mejor en elementos con scroll obligatorio */
+.overflow-auto:hover::-webkit-scrollbar-thumb,
+.overflow-y-auto:hover::-webkit-scrollbar-thumb,
+.overflow-x-auto:hover::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.35);
+}

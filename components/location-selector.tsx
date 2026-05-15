@@ -1,145 +1,140 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { MapPin, Plus, Search, X } from "lucide-react"
-import { Ubicacion } from "@/types/ubicacion"
-import apiClient from "@/app/api/apiClient"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { MapPin, Search, X } from "lucide-react";
+import { Ubicacion } from "@/types/ubicacion";
+import apiClient from "@/app/api/apiClient";
+import { cn } from "@/lib/utils";
 
 interface LocationSelectorProps {
-  selectedLocation: Ubicacion | null
-  onLocationSelect: (location: Ubicacion) => void
-  occupiedLocationIds: number[]
+    selectedLocation: Ubicacion | null;
+    onLocationSelect: (location: Ubicacion) => void;
+    occupiedLocationIds: number[];
 }
 
 export function LocationSelector({
-  selectedLocation,
-  onLocationSelect,
-  occupiedLocationIds,
+    selectedLocation,
+    onLocationSelect,
+    occupiedLocationIds,
 }: LocationSelectorProps) {
-  const [ubicaciones, setUbicaciones] = useState<Ubicacion[]>([])
-  const [searchTerm, setSearchTerm] = useState("")
-  const [loading, setLoading] = useState(true)
-  const [searching, setSearching] = useState(false)
-  const [showSearch, setShowSearch] = useState(false)
+    const [ubicaciones, setUbicaciones] = useState<Ubicacion[]>([]);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [loading, setLoading] = useState(true);
+    const [searching, setSearching] = useState(false);
+    const [showSearch, setShowSearch] = useState(false);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setSearching(true)
-        const response = await apiClient.get("/ubicaciones-combo-general", {
-          params: { search: searchTerm },
-        })
-        setUbicaciones(response.data.data || [])
-      } catch {
-        setUbicaciones([])
-      } finally {
-        setLoading(false)
-        setSearching(false)
-      }
-    }
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setSearching(true);
+                const response = await apiClient.get("/ubicaciones-combo-general", {
+                    params: { search: searchTerm },
+                });
+                setUbicaciones(response.data.data || []);
+            } catch {
+                setUbicaciones([]);
+            } finally {
+                setLoading(false);
+                setSearching(false);
+            }
+        };
 
-    const timeout = setTimeout(() => {
-      fetchData()
-    }, 300)
+        const timeout = setTimeout(fetchData, 300);
+        return () => clearTimeout(timeout);
+    }, [searchTerm]);
 
-    return () => clearTimeout(timeout)
-  }, [searchTerm])
+    if (ubicaciones.length === 0 && !loading && !searchTerm) return null;
 
-  
-
-  return (
-    <>	
-    {
-      ubicaciones.length > 0 ?
-        <div className="p-4 border-b border-border flex-shrink-0">
-          <div className="space-y-2 text-xs">
-            {/* Top bar: Title + Search */}
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span className="font-medium">Ubicaciones</span>
-                <span className="bg-muted px-1.5 py-0.5 rounded-full text-muted-foreground">
-                  {ubicaciones.length}
-                </span>
-
+    return (
+        <div className="space-y-1.5">
+            {/* Encabezado compacto */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <MapPin className="h-3 w-3" />
+                    <span className="font-medium">Ubicaciones</span>
+                    <span className="bg-muted px-1.5 py-0.5 rounded-full text-[10px]">
+                        {ubicaciones.length}
+                    </span>
+                </div>
                 <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-5 w-5"
-                  onClick={() => {
-                    setShowSearch(!showSearch)
-                    if (showSearch) setSearchTerm("")
-                  }}
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => {
+                        setShowSearch(!showSearch);
+                        if (showSearch) setSearchTerm("");
+                    }}
                 >
-                  <Search className="h-3 w-3" />
+                    <Search className="h-3.5 w-3.5" />
                 </Button>
-              </div>
             </div>
 
+            {/* Campo de búsqueda (opcional) */}
             {showSearch && (
-              <div className="relative">
-                <Input
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Buscar..."
-                  className="h-6 text-xs pl-7 pr-6"
-                />
-                <Search className="absolute left-2 top-1.5 h-3 w-3 text-muted-foreground" />
-                {searching ? (
-                  <div className="absolute right-2 top-1.5 h-3 w-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                ) : searchTerm ? (
-                  <button
-                    className="absolute right-2 top-1.5 text-muted-foreground"
-                    onClick={() => setSearchTerm("")}
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                ) : null}
-              </div>
+                <div className="relative">
+                    <Input
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        placeholder="Buscar ubicación..."
+                        className="h-7 text-xs pl-7 pr-6"
+                    />
+                    <Search className="absolute left-2 top-1.5 h-3 w-3 text-muted-foreground" />
+                    {searching ? (
+                        <div className="absolute right-2 top-1.5 h-3 w-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    ) : searchTerm ? (
+                        <button
+                            className="absolute right-2 top-1.5 text-muted-foreground hover:text-foreground"
+                            onClick={() => setSearchTerm("")}
+                        >
+                            <X className="h-3 w-3" />
+                        </button>
+                    ) : null}
+                </div>
             )}
 
-            <div className="flex flex-wrap gap-1 max-h-[80px] overflow-y-auto pr-1">
-              {loading || searching ? (
-                Array.from({ length: 6 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="h-6 px-2 w-25 bg-muted rounded animate-pulse"
-                  ></div>
-                ))
-              ) : ubicaciones.length > 0 ? (
-                ubicaciones.map((location) => (
-                  <button
-                    key={location.id}
-                    onClick={() => onLocationSelect(location)}
-                    className={`flex items-center gap-1 h-6 px-2 rounded border transition-all ${
-                      selectedLocation?.id === location.id
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-muted hover:bg-muted/70 border-transparent text-muted-foreground"
-                    }`}
-                  >
-                    <MapPin className="h-3 w-3" />
-                    <span className="truncate max-w-[80px]">{location.nombre}</span>
-
-                    {occupiedLocationIds.includes(location.id) && (
-                      <div className="ml-1 w-1.5 h-1.5 bg-orange-500 rounded-full" />
-                    )}
-                  </button>
-                ))
-              ) : (
-                <p className="text-muted-foreground mt-1">
-                  {searchTerm
-                    ? `No hay resultados para "${searchTerm}"`
-                    : "No hay ubicaciones disponibles"}
-                </p>
-              )}
+            {/* Lista de ubicaciones (wrap responsivo con scroll horizontal si es necesario) */}
+            <div className="flex flex-wrap gap-1.5 max-h-12 overflow-y-auto">
+                {loading || searching ? (
+                    Array.from({ length: 5 }).map((_, i) => (
+                        <div
+                            key={i}
+                            className="h-6 w-16 rounded-md bg-muted animate-pulse"
+                        ></div>
+                    ))
+                ) : ubicaciones.length > 0 ? (
+                    ubicaciones.map((location) => {
+                        const isSelected = selectedLocation?.id === location.id;
+                        const isOccupied = occupiedLocationIds.includes(location.id);
+                        return (
+                            <button
+                                key={location.id}
+                                onClick={() => onLocationSelect(location)}
+                                className={cn(
+                                    "inline-flex items-center gap-1 h-6 px-2 rounded-md text-xs font-medium transition-all",
+                                    isSelected
+                                        ? "bg-primary text-primary-foreground shadow-sm"
+                                        : "bg-muted/80 hover:bg-muted text-foreground border border-transparent hover:border-border",
+                                    isOccupied && !isSelected && "border-l-2 border-l-amber-500"
+                                )}
+                            >
+                                <MapPin className="h-2.5 w-2.5" />
+                                <span className="max-w-[100px] truncate">{location.nombre}</span>
+                                {isOccupied && (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                )}
+                            </button>
+                        );
+                    })
+                ) : (
+                    <p className="text-xs text-muted-foreground py-1">
+                        {searchTerm
+                            ? `Sin resultados para "${searchTerm}"`
+                            : "No hay ubicaciones"}
+                    </p>
+                )}
             </div>
-          </div>
         </div>
-      : ''
-    }
-    </>
-    
-  )
+    );
 }
