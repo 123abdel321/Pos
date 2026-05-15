@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useAuthStorage } from '@/hooks/useAuthStorage';
 import {
     Dialog,
     DialogContent,
@@ -87,6 +88,7 @@ export function OrderPanel({
     ivaIncluido,
     disableCollapse = false,
 }: OrderPanelProps) {
+    const { getToken } = useAuthStorage();
     // Inicializar colapsado en móvil, expandido en escritorio
     const [isExpanded, setIsExpanded] = useState(() => {
         if (disableCollapse) return true;
@@ -205,7 +207,8 @@ export function OrderPanel({
 
     const handlePrintOrder = (orderId: number | null) => {
         if (orderId) {
-            const pdfUrl = `https://app.portafolioerp.com/pos/pedido-print/${orderId}`
+            const token = getToken();
+            const pdfUrl = `${process.env.APP_URL}/pos/pedido-print/${token}/${orderId}`;
             window.open(pdfUrl, "_blank")
         }
     }
