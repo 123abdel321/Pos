@@ -237,9 +237,9 @@ export function OrdersTableView({ orders, onSelectOrder, onDeleteOrder, onClose 
         const token = getToken();
 
         if (order.estado === "completado" && order.id_venta) {
-            pdfUrl = `${process.env.APP_URL}/pos/venta-print/${token}/${order.id_venta}`;
+            pdfUrl = `https://app.portafolioerp.com/pos/venta-print/${token}/${order.id_venta}`;
         } else if (order.id_backend) {
-            pdfUrl = `${process.env.APP_URL}/pos/pedido-print/${token}/${order.id_backend}`;
+            pdfUrl = `https://app.portafolioerp.com/pos/pedido-print/${token}/${order.id_backend}`;
         } else {
             return;
         }

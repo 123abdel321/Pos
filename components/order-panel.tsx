@@ -208,7 +208,7 @@ export function OrderPanel({
     const handlePrintOrder = (orderId: number | null) => {
         if (orderId) {
             const token = getToken();
-            const pdfUrl = `${process.env.APP_URL}/pos/pedido-print/${token}/${orderId}`;
+            const pdfUrl = `https://app.portafolioerp.com/pos/pedido-print/${token}/${orderId}`;
             window.open(pdfUrl, "_blank")
         }
     }
