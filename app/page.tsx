@@ -13,11 +13,11 @@ import { Badge } from "@/components/ui/badge"
 import { useTheme } from "@/components/theme-provider"
 import { useAuthStorage } from '@/hooks/useAuthStorage'
 import { useRealtimeOrders } from '@/hooks/useRealtimeOrders'
-import { 
-	Sun, 
-	Moon, 
-	Table, 
-	LogOut, 
+import {
+	Sun,
+	Moon,
+	Table,
+	LogOut,
 	Menu,
 	User,
 	Warehouse,
@@ -30,7 +30,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext"
 import ProtectedRoute from "@/components/sistem/ProtectedRoute"
 import LoginPage from "@/app/login/page"
-import apiClient from "@/app/api/apiClient" 
+import apiClient from "@/app/api/apiClient"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -39,7 +39,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { OrdersManagerPanel } from "@/components/OrdersManagerPanel" 
+import { OrdersManagerPanel } from "@/components/OrdersManagerPanel"
 import { Input } from "@/components/ui/input";
 
 // --- INTERFACES ---
@@ -91,25 +91,25 @@ export interface OrderItem {
 }
 
 export interface Order {
-    id: string
-    id_backend: number | null
-    id_ubicacion: number | null
-    id_bodega: number | null
+	id: string
+	id_backend: number | null
+	id_ubicacion: number | null
+	id_bodega: number | null
 	id_venta: number | null
 	id_cliente: number | null
 	cliente: any
 	bodega: any
 	ubicacion: any
-    ubicacion_nombre: string
-    productos: OrderItem[]
-    subtotal: number
-    iva: number
-    retencion: number
+	ubicacion_nombre: string
+	productos: OrderItem[]
+	subtotal: number
+	iva: number
+	retencion: number
 	porcentaje_retencion: number | null,
-    total: number
-    fecha: string
-    estado: "pendiente" | "completado"
-    iva_desglose?: { [key: number]: number }
+	total: number
+	fecha: string
+	estado: "pendiente" | "completado"
+	iva_desglose?: { [key: number]: number }
 }
 
 export interface Cliente {
@@ -215,7 +215,7 @@ function POSContent() {
 	const [empresa, setEmpresa] = useState<Empresa | null>(null)
 	const { user, logout, isAuthenticated, loading } = useAuth()
 	const [showOrdersTable, setShowOrdersTable] = useState(false) // Ya no se usará en móvil, pero se mantiene para escritorio
-	const [showPaymentModal, setShowPaymentModal] = useState(false) 
+	const [showPaymentModal, setShowPaymentModal] = useState(false)
 	const [currentOrder, setCurrentOrder] = useState<Order | null>(null)
 	const [loadingOrderId, setLoadingOrderId] = useState<string | null>(null)
 	const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null)
@@ -254,6 +254,50 @@ function POSContent() {
 			.map(o => o.id_ubicacion!)
 			.filter((value, index, self) => self.indexOf(value) === index); // Obtener únicos
 	}, [orders]);
+
+	const addProductToOrderLogic = (order: Order, product: Product, quantity: number): Order => {
+		const existingIndex = order.productos.findIndex((item) => item.id_producto === product.id);
+		let updatedProducts: OrderItem[];
+
+		if (existingIndex >= 0) {
+			// Actualizar producto existente
+			updatedProducts = [...order.productos];
+			const item = updatedProducts[existingIndex];
+			const newQuantity = item.cantidad + quantity;
+			const totals = calculateProductTotals(product, newQuantity);
+			item.cantidad = newQuantity;
+			item.subtotal = totals.subtotal;
+			item.iva_valor = totals.ivaValor;
+			item.retencion_porcentaje = totals.retencionPorcentaje;
+			item.retencion_valor = totals.retencionValor;
+			item.total = totals.totalProducto;
+		} else {
+			// Agregar nuevo producto
+			const totals = calculateProductTotals(product, quantity);
+			const orderItem: OrderItem = {
+				consecutivo: order.productos.length + 1,
+				id_producto: product.id,
+				nombre: `${product.codigo} - ${product.nombre}`,
+				cantidad: quantity,
+				costo: Number.parseFloat(product.precio),
+				subtotal: totals.subtotal,
+				descuento_porcentaje: 0,
+				descuento_valor: totals.descuentoValor,
+				iva_porcentaje: totals.ivaPorcentaje,
+				iva_valor: totals.ivaValor,
+				retencion_porcentaje: totals.retencionPorcentaje,
+				retencion_valor: totals.retencionValor,
+				total: totals.totalProducto,
+				concepto: "",
+				id_cuenta_venta_iva: product.familia?.cuenta_venta_iva?.id ?? null,
+				id_cuenta_venta_descuento: product.familia?.cuenta_venta_descuento?.id ?? null,
+				id_cuenta_venta_retencion: product.familia?.cuenta_venta_retencion?.id ?? null,
+			};
+			updatedProducts = [...order.productos, orderItem];
+		}
+
+		return { ...order, productos: updatedProducts };
+	};
 
 	//CARGAR TODAS LAS BODEGAS AL INICIAR COMPONENTE
 	useEffect(() => {
@@ -323,17 +367,17 @@ function POSContent() {
 		}
 		const delayDebounceFn = setTimeout(async () => {
 			try {
-			setLoadingBodegas(true)
-			const response = await apiClient.get('/bodega/combo-bodega', {
-				params: { search: searchBodega }
-			})
-			const data = response.data.data || response.data
-			setBodegasResultado(Array.isArray(data) ? data : [])
+				setLoadingBodegas(true)
+				const response = await apiClient.get('/bodega/combo-bodega', {
+					params: { search: searchBodega }
+				})
+				const data = response.data.data || response.data
+				setBodegasResultado(Array.isArray(data) ? data : [])
 			} catch (error) {
-			console.error('Error searching bodegas:', error)
-			setBodegasResultado([])
+				console.error('Error searching bodegas:', error)
+				setBodegasResultado([])
 			} finally {
-			setLoadingBodegas(false)
+				setLoadingBodegas(false)
 			}
 		}, 500)
 		return () => clearTimeout(delayDebounceFn)
@@ -342,7 +386,7 @@ function POSContent() {
 	const handleLogout = () => {
 		logout();
 	};
-	
+
 	const calculateOrderTotals = (order: Order): Order => {
 		let iva = 0;
 		let retencion = 0;
@@ -380,8 +424,6 @@ function POSContent() {
 			return acc;
 		}, {} as { [key: number]: number });
 
-		console.log('ivaPorTasas: ',ivaPorTasas);
-
 		// Calcular retención (IGUAL A TU JAVASCRIPT)
 		if (topeRetencion > 0 && total >= topeRetencion) {
 			retencion = porcentajeRetencion ? (valorBruto * porcentajeRetencion) / 100 : 0;
@@ -390,12 +432,12 @@ function POSContent() {
 		if (retencion) {
 			total -= retencion;
 		}
-		
-		return { 
-			...order, 
-			subtotal: valorBruto, 
-			iva, 
-			retencion, 
+
+		return {
+			...order,
+			subtotal: valorBruto,
+			iva,
+			retencion,
 			total,
 			porcentaje_retencion: porcentajeRetencion,
 			iva_desglose: ivaPorTasas
@@ -410,7 +452,7 @@ function POSContent() {
 			const totalNum = Number.parseFloat(detalle.total || '0');
 			const retencionValorNum = Number.parseFloat(detalle.retencion_valor || '0');
 			const retencionPorcentajeNum = Number.parseFloat(detalle.retencion_porcentaje || '0');
-			
+
 			return {
 				consecutivo: index + 1,
 				id_producto: detalle.id_producto,
@@ -432,8 +474,6 @@ function POSContent() {
 			}
 		});
 
-		console.log('frontendItems: ',frontendItems);
-
 		var ivaCalculo = 0
 		var retencionCalculo = 0
 		var descuentoCalculo = 0
@@ -441,31 +481,29 @@ function POSContent() {
 		var redondeoCalculo = 0
 		var valorBrutoCalculo = 0
 
-		console.log('backendOrder: ',backendOrder);
-
 		for (let index = 0; index < backendOrder.detalles.length; index++) {
 			const producto = backendOrder.detalles[index];
 
 			let impuestoPorcentaje = 0;
-            let topeValor = 0;
+			let topeValor = 0;
 
 			if (producto.cuenta_retencion && producto.cuenta_retencion.impuesto) {
-            	impuestoPorcentaje = parseFloat(producto.cuenta_retencion.impuesto.porcentaje);
-            	topeValor = parseFloat(producto.cuenta_retencion.impuesto.base);
-            }
+				impuestoPorcentaje = parseFloat(producto.cuenta_retencion.impuesto.porcentaje);
+				topeValor = parseFloat(producto.cuenta_retencion.impuesto.base);
+			}
 
 			if (impuestoPorcentaje > porcentajeRetencion) {
 				setPorcentajeRetencion(impuestoPorcentaje)
 				setTopeRetencion(topeValor)
-            }
+			}
 
-			ivaCalculo+= parseFloat(producto.iva_valor)
-			descuentoCalculo+= parseFloat(producto.descuento_valor)
-			valorBrutoCalculo+= (parseFloat(producto.cantidad) * parseFloat(producto.costo)) - parseFloat(producto.descuento_valor)
+			ivaCalculo += parseFloat(producto.iva_valor)
+			descuentoCalculo += parseFloat(producto.descuento_valor)
+			valorBrutoCalculo += (parseFloat(producto.cantidad) * parseFloat(producto.costo)) - parseFloat(producto.descuento_valor)
 		}
 
 		if (ivaIncluido) {
-			valorBrutoCalculo-= ivaCalculo;
+			valorBrutoCalculo -= ivaCalculo;
 		}
 
 		totalCalculo = ivaIncluido ? valorBrutoCalculo : valorBrutoCalculo + ivaCalculo;
@@ -494,11 +532,9 @@ function POSContent() {
 			return acc;
 		}, {} as { [key: number]: number });
 
-		console.log('ivaPorTasas: ',ivaPorTasas);
-
 		return {
-			id: `order-${backendOrder.id}`, 
-			id_backend: backendOrder.id, 
+			id: `order-${backendOrder.id}`,
+			id_backend: backendOrder.id,
 			id_ubicacion: backendOrder.id_ubicacion,
 			id_bodega: backendOrder.id_bodega,
 			id_venta: backendOrder.id_venta,
@@ -506,7 +542,7 @@ function POSContent() {
 			cliente: backendOrder.cliente,
 			bodega: backendOrder.bodega,
 			ubicacion: backendOrder.ubicacion,
-			ubicacion_nombre: backendOrder.cliente?.nombre_completo.trim() || "Pedido Mostrador", 
+			ubicacion_nombre: backendOrder.cliente?.nombre_completo.trim() || "Pedido Mostrador",
 			productos: frontendItems,
 			subtotal: Number.parseFloat(backendOrder.subtotal),
 			iva: Number.parseFloat(backendOrder.total_iva),
@@ -520,97 +556,97 @@ function POSContent() {
 	}, []);
 
 	const mapSingleBackendOrderToFrontend = useCallback((backendOrder: BackendPedido): Order => {
-        const frontendItems: OrderItem[] = (backendOrder.detalles || []).map((detalle: any, index: number): OrderItem => {
-            const subtotalNum = Number.parseFloat(detalle.subtotal || '0');
-            const ivaValorNum = Number.parseFloat(detalle.iva_valor || '0');
-            const totalNum = Number.parseFloat(detalle.total || '0');
-            const retencionValorNum = Number.parseFloat(detalle.retencion_valor || '0');
-            const retencionPorcentajeNum = Number.parseFloat(detalle.retencion_porcentaje || '0');
-            
-            return {
-                consecutivo: index + 1,
-                id_producto: detalle.id_producto,
-                nombre: detalle.descripcion,
-                cantidad: Number.parseFloat(detalle.cantidad || '0'),
-                costo: Number.parseFloat(detalle.costo || '0'),
-                subtotal: subtotalNum,
-                descuento_porcentaje: Number.parseFloat(detalle.descuento_porcentaje || '0'),
-                descuento_valor: Number.parseFloat(detalle.descuento_valor || '0'),
-                iva_porcentaje: Number.parseFloat(detalle.iva_porcentaje || '0'),
-                iva_valor: ivaValorNum,
-                retencion_porcentaje: retencionPorcentajeNum,
-                retencion_valor: retencionValorNum,
-                total: totalNum,
-                concepto: "",
+		const frontendItems: OrderItem[] = (backendOrder.detalles || []).map((detalle: any, index: number): OrderItem => {
+			const subtotalNum = Number.parseFloat(detalle.subtotal || '0');
+			const ivaValorNum = Number.parseFloat(detalle.iva_valor || '0');
+			const totalNum = Number.parseFloat(detalle.total || '0');
+			const retencionValorNum = Number.parseFloat(detalle.retencion_valor || '0');
+			const retencionPorcentajeNum = Number.parseFloat(detalle.retencion_porcentaje || '0');
+
+			return {
+				consecutivo: index + 1,
+				id_producto: detalle.id_producto,
+				nombre: detalle.descripcion,
+				cantidad: Number.parseFloat(detalle.cantidad || '0'),
+				costo: Number.parseFloat(detalle.costo || '0'),
+				subtotal: subtotalNum,
+				descuento_porcentaje: Number.parseFloat(detalle.descuento_porcentaje || '0'),
+				descuento_valor: Number.parseFloat(detalle.descuento_valor || '0'),
+				iva_porcentaje: Number.parseFloat(detalle.iva_porcentaje || '0'),
+				iva_valor: ivaValorNum,
+				retencion_porcentaje: retencionPorcentajeNum,
+				retencion_valor: retencionValorNum,
+				total: totalNum,
+				concepto: "",
 				id_cuenta_venta_iva: detalle.id_cuenta_venta_iva,
 				id_cuenta_venta_descuento: detalle.id_cuenta_venta_descuento,
 				id_cuenta_venta_retencion: detalle.id_cuenta_venta_retencion
-            }
-        });
+			}
+		});
 
-        // Cálculos simplificados para un solo pedido
-        const totalIva = frontendItems.reduce((sum, item) => sum + item.iva_valor, 0);
-        const totalDescuento = frontendItems.reduce((sum, item) => sum + item.descuento_valor, 0);
-        const valorBruto = frontendItems.reduce((sum, item) => 
-            sum + (item.cantidad * item.costo) - item.descuento_valor, 0
-        );
+		// Cálculos simplificados para un solo pedido
+		const totalIva = frontendItems.reduce((sum, item) => sum + item.iva_valor, 0);
+		const totalDescuento = frontendItems.reduce((sum, item) => sum + item.descuento_valor, 0);
+		const valorBruto = frontendItems.reduce((sum, item) =>
+			sum + (item.cantidad * item.costo) - item.descuento_valor, 0
+		);
 
-        //  CALCULAR IVA AGRUPADO POR TASA
-        const ivaPorTasas = backendOrder.detalles.reduce((acc, item) => {
-            const tasa = item.iva_porcentaje;
+		//  CALCULAR IVA AGRUPADO POR TASA
+		const ivaPorTasas = backendOrder.detalles.reduce((acc, item) => {
+			const tasa = item.iva_porcentaje;
 
-            if (tasa === 0) {
-                return acc;
-            }
+			if (tasa === 0) {
+				return acc;
+			}
 
-            if (!acc[tasa]) {
-                acc[tasa] = 0;
-            }
+			if (!acc[tasa]) {
+				acc[tasa] = 0;
+			}
 
-            acc[tasa] += item.iva_valor;
-            return acc;
-        }, {} as { [key: number]: number });
+			acc[tasa] += item.iva_valor;
+			return acc;
+		}, {} as { [key: number]: number });
 
-        return {
-            id: `order-${backendOrder.id}`, 
-            id_backend: backendOrder.id, 
-            id_ubicacion: backendOrder.id_ubicacion,
-            id_bodega: backendOrder.id_bodega,
-            id_venta: backendOrder.id_venta,
-            id_cliente: backendOrder.id_cliente,
-            cliente: backendOrder.cliente,
-            bodega: backendOrder.bodega,
-            ubicacion: backendOrder.ubicacion,
-            ubicacion_nombre: backendOrder.cliente?.nombre_completo.trim() || "Pedido Mostrador", 
-            productos: frontendItems,
-            subtotal: Number.parseFloat(backendOrder.subtotal),
-            iva: totalIva,
-            retencion: Number.parseFloat(backendOrder.total_rete_fuente),
-            porcentaje_retencion: Number.parseFloat(backendOrder.porcentaje_rete_fuente),
-            total: valorBruto,
-            fecha: backendOrder.created_at,
-            iva_desglose: ivaPorTasas,
-            estado: backendOrder.estado === 1 ? "pendiente" : "completado",
-        };
-    }, []);
+		return {
+			id: `order-${backendOrder.id}`,
+			id_backend: backendOrder.id,
+			id_ubicacion: backendOrder.id_ubicacion,
+			id_bodega: backendOrder.id_bodega,
+			id_venta: backendOrder.id_venta,
+			id_cliente: backendOrder.id_cliente,
+			cliente: backendOrder.cliente,
+			bodega: backendOrder.bodega,
+			ubicacion: backendOrder.ubicacion,
+			ubicacion_nombre: backendOrder.cliente?.nombre_completo.trim() || "Pedido Mostrador",
+			productos: frontendItems,
+			subtotal: Number.parseFloat(backendOrder.subtotal),
+			iva: totalIva,
+			retencion: Number.parseFloat(backendOrder.total_rete_fuente),
+			porcentaje_retencion: Number.parseFloat(backendOrder.porcentaje_rete_fuente),
+			total: valorBruto,
+			fecha: backendOrder.created_at,
+			iva_desglose: ivaPorTasas,
+			estado: backendOrder.estado === 1 ? "pendiente" : "completado",
+		};
+	}, []);
 
 	const refreshOrders = useCallback(async () => {
 		try {
 			const response = await apiClient.get('/pos/pedidos');
 			const backendOrders: BackendPedido[] = response.data.data || [];
 			const newOrders = backendOrders
-			.filter(o => o.estado === 1) // solo pendientes
-			.map(mapBackendOrderToFrontend);
-			
+				.filter(o => o.estado === 1) // solo pendientes
+				.map(mapBackendOrderToFrontend);
+
 			setOrders(newOrders);
-			
+
 			// Si el currentOrder ya no existe (ej. fue eliminado), limpiar
 			if (currentOrder && !newOrders.find(o => o.id_backend === currentOrder.id_backend)) {
-			setCurrentOrder(null);
+				setCurrentOrder(null);
 			} else if (currentOrder) {
-			// Actualizar el currentOrder si existe
-			const updatedCurrent = newOrders.find(o => o.id_backend === currentOrder.id_backend);
-			if (updatedCurrent) setCurrentOrder(updatedCurrent);
+				// Actualizar el currentOrder si existe
+				const updatedCurrent = newOrders.find(o => o.id_backend === currentOrder.id_backend);
+				if (updatedCurrent) setCurrentOrder(updatedCurrent);
 			}
 		} catch (error) {
 			console.error('Error refreshing orders:', error);
@@ -619,26 +655,26 @@ function POSContent() {
 
 	const handleRealtimeEvent = useCallback((data: any) => {
 		const usuario = getUser();
-		
+
 		if (data.usuario_id === usuario?.id) {
 			return;
 		}
-		
+
 		switch (data.tipo) {
 			case 'pedido_creado':
 			case 'pedido_actualizado':
 			case 'pedido_completado':
 				refreshOrders(); // recarga la lista completa
-			break;
+				break;
 			case 'pedido_eliminado':
 				// Eliminar localmente sin recargar toda la lista (optimización)
 				setOrders(prev => prev.filter(o => o.id_backend !== data.id_pedido));
 				if (currentOrder?.id_backend === data.id_pedido) {
 					setCurrentOrder(null);
 				}
-			break;
+				break;
 			default:
-			break;
+				break;
 		}
 	}, [refreshOrders, currentOrder]);
 
@@ -646,7 +682,7 @@ function POSContent() {
 		empresaToken,
 		onEvent: handleRealtimeEvent,
 	});
-	
+
 	// Función para guardar en el backend
 	const saveOrderToBackend = async (
 		order: Order,
@@ -674,7 +710,7 @@ function POSContent() {
 					total: p.total.toString(),
 				})),
 				id_ubicacion: locationId,
-				id_bodega: bodegaId, 
+				id_bodega: bodegaId,
 				consecutivo: order.id.replace('order-', ''),
 				id_cliente: clienteId,
 				fecha_manual: new Date().toISOString().split('T')[0],
@@ -685,10 +721,10 @@ function POSContent() {
 			}
 
 			const response = await apiClient.post('/pos/pedido', payload)
-			const backendId = response.data.data?.id 
-			
+			const backendId = response.data.data?.id
+
 			return { ...order, id_backend: backendId || order.id_backend }
-			
+
 		} catch (error: any) {
 			console.error('❌ Error guardando pedido:', error)
 			return order
@@ -698,7 +734,7 @@ function POSContent() {
 	const saveSaleToBackend = async (order: Order, paymentData: any): Promise<Order> => {
 		try {
 			paymentData.id_cliente = selectedCliente ? selectedCliente.id : null;
-		
+
 			const response = await apiClient.post('/pos/venta', paymentData);
 
 			if (response.data.success) {
@@ -720,32 +756,32 @@ function POSContent() {
 			};
 
 			return updatedOrder;
-			
+
 		} catch (error: any) {
 			console.error('❌ Error guardando pedido:', error)
 			return order
 		}
 	}
-	
+
 	//  FUNCIÓN CENTRAL DE ACTUALIZACIÓN
 	const updateOrderLocallyAndRemotely = useCallback(async (updatedOrder: Order, currentCliente: Cliente | null, currentLocation: Ubicacion | null, currentBodega: Bodega | null) => {
-        setCurrentOrder(updatedOrder);
-        setOrders(prev => prev.map(o => (o.id === updatedOrder.id ? updatedOrder : o)));
-		
-        try {
-            const savedOrder = await saveOrderToBackend(updatedOrder, currentCliente, currentLocation, currentBodega);
+		setCurrentOrder(updatedOrder);
+		setOrders(prev => prev.map(o => (o.id === updatedOrder.id ? updatedOrder : o)));
 
-            if (savedOrder.id_backend && (!updatedOrder.id_backend || savedOrder.id_backend !== updatedOrder.id_backend)) {
-                setCurrentOrder(savedOrder);
-                setOrders(prev => prev.map(o => (o.id === savedOrder.id ? savedOrder : o)));
-            }
-        } catch (error) {
-            console.error("Error actualizando pedido en backend:", error);
-        }
-    }, [selectedBodega]);
+		try {
+			const savedOrder = await saveOrderToBackend(updatedOrder, currentCliente, currentLocation, currentBodega);
+
+			if (savedOrder.id_backend && (!updatedOrder.id_backend || savedOrder.id_backend !== updatedOrder.id_backend)) {
+				setCurrentOrder(savedOrder);
+				setOrders(prev => prev.map(o => (o.id === savedOrder.id ? savedOrder : o)));
+			}
+		} catch (error) {
+			console.error("Error actualizando pedido en backend:", error);
+		}
+	}, [selectedBodega]);
 
 	// --- LOGICA DE CARGA INICIAL Y CLIENTE ---
-	
+
 	// Carga Cliente 7 Bodega por defecto desde localStorage 
 	useEffect(() => {
 		if (typeof window !== 'undefined') {
@@ -778,7 +814,7 @@ function POSContent() {
 				const newOrders = backendOrders
 					.filter(o => o.estado === 1)
 					.map(mapBackendOrderToFrontend)
-				
+
 				setOrders(newOrders)
 
 				if (newOrders.length === 0) {
@@ -815,7 +851,7 @@ function POSContent() {
 					const dataUbicacion = {
 						id: ubicacion.id,
 						nombre: ubicacion.nombre,
-						text: ubicacion.nombre+' - '+ubicacion.codigo,
+						text: ubicacion.nombre + ' - ' + ubicacion.codigo,
 						codigo: ubicacion.codigo,
 						pedido: {
 							id: pedidoUbi ? pedidoUbi.id : null,
@@ -842,7 +878,7 @@ function POSContent() {
 
 	const selectOrder = async (order: Order, findInBakend = true) => {
 		setLoadingOrderId(order.id)
-		
+
 		try {
 			var orderResponse = null
 
@@ -850,7 +886,7 @@ function POSContent() {
 				const response = await apiClient.get(`/pos/pedidos/${order.id_backend}`);
 				orderResponse = response.data.data
 			}
-		
+
 			const orderBodega = orderResponse ? orderResponse.bodega : order.bodega;
 			const orderCliente = orderResponse ? orderResponse.cliente : order.cliente;
 			const orderUbicacion = orderResponse ? orderResponse.ubicacion : order.ubicacion;
@@ -870,7 +906,7 @@ function POSContent() {
 					updated_by: orderBodega ? orderBodega.updated_by : null,
 					created_at: orderBodega ? orderBodega.created_at : null,
 					updated_at: orderBodega ? orderBodega.updated_at : null,
-					text: orderBodega ? orderBodega.codigo+' - '+orderBodega.nombre : null,
+					text: orderBodega ? orderBodega.codigo + ' - ' + orderBodega.nombre : null,
 				}
 				setSelectedBodega(dataBodega)
 			} else {
@@ -906,7 +942,7 @@ function POSContent() {
 				const dataUbicacion = {
 					id: orderUbicacion.id,
 					nombre: orderUbicacion.nombre,
-					text: orderUbicacion.nombre+' - '+orderUbicacion.codigo,
+					text: orderUbicacion.nombre + ' - ' + orderUbicacion.codigo,
 					codigo: orderUbicacion.codigo,
 					pedido: {
 						id: pedidoUbi ? pedidoUbi.id : null,
@@ -947,7 +983,7 @@ function POSContent() {
 					}
 				});
 			}
-			
+
 			const orderWithUpdatedItems = {
 				...order,
 				productos: detalleOrden,
@@ -960,9 +996,9 @@ function POSContent() {
 			};
 
 			setCurrentOrder(orderWithUpdatedItems)
-			
-			setOrders(prevOrders => 
-				prevOrders.map(o => 
+
+			setOrders(prevOrders =>
+				prevOrders.map(o =>
 					o.id === order.id ? orderWithUpdatedItems : o
 				)
 			);
@@ -971,50 +1007,30 @@ function POSContent() {
 			console.error('Error al cargar el pedido:', error)
 		} finally {
 			setLoadingOrderId(null)
-		}		
+		}
 	}
 
-	const createNewOrder = async (ubicacion: Ubicacion | null = null, currentCliente: Cliente | null = null, currentBodega: Bodega | null = null) => {
+	const createNewOrder = async (
+		ubicacion: Ubicacion | null = null,
+		currentCliente: Cliente | null = null,
+		currentBodega: Bodega | null = null
+	): Promise<Order> => {
+		// Obtener cliente y bodega por defecto si no vienen
+		const cliente = currentCliente || clienteDefecto;
+		const bodega = currentBodega || bodegaDefecto;
 
-		const clienteGuardado = localStorage.getItem('clientePorDefecto');
-		var clienteSeteado = null
-		if (clienteGuardado) {
-			clienteSeteado = JSON.parse(clienteGuardado);
-			try {
-				setSelectedCliente(clienteSeteado);
-			} catch (error) {
-				console.error('❌ Error cargando cliente desde localStorage:', error);
-			}
-		}
-
-		const bodegaGuardado = localStorage.getItem('bodegaPorDefecto');
-		var bodegaSeteado = null
-		if (bodegaGuardado) {
-			bodegaSeteado = JSON.parse(bodegaGuardado);
-			try {
-				setSelectedBodega(bodegaSeteado);
-			} catch (error) {
-				console.error('❌ Error cargando bodega desde localStorage:', error);
-			}
-		}
-
-		if (ubicacion) {
-			setSelectedLocation(ubicacion);
-		} else {
-			setSelectedLocation(null);
-		}
-
+		// Crear orden local
 		const newOrder: Order = {
 			id: `order-${Date.now()}`,
 			id_backend: null,
 			id_venta: null,
-			id_bodega: currentBodega ? currentBodega.id : null,
-			bodega: currentBodega,
-			id_cliente: currentCliente ? currentCliente.id : null,
-			cliente: currentCliente,
-			id_ubicacion: ubicacion ? ubicacion.id : null,
+			id_bodega: bodega?.id ?? null,
+			bodega: bodega,
+			id_cliente: cliente?.id ?? null,
+			cliente: cliente,
+			id_ubicacion: ubicacion?.id ?? null,
 			ubicacion: ubicacion,
-			ubicacion_nombre: ubicacion ? ubicacion.nombre : "Mostrador",
+			ubicacion_nombre: ubicacion?.nombre || "Mostrador",
 			productos: [],
 			subtotal: 0,
 			iva: 0,
@@ -1023,105 +1039,71 @@ function POSContent() {
 			total: 0,
 			fecha: new Date().toISOString(),
 			estado: "pendiente",
-		}
+		};
 
+		// Actualizar estado local (para que la UI reaccione rápido)
 		setOrders((prev) => [...prev, newOrder]);
 		setCurrentOrder(newOrder);
-		
+
+		// Guardar en backend y ESPERAR la respuesta para obtener el id_backend
+		let savedOrder: Order = newOrder;
 		try {
-			const savedOrder = await saveOrderToBackend(newOrder, selectedCliente, ubicacion, selectedBodega)
-			
+			savedOrder = await saveOrderToBackend(newOrder, cliente, ubicacion, bodega);
 			if (savedOrder?.id_backend) {
-				setCurrentOrder(savedOrder)
-				setOrders((prev) => prev.map((o) => (o.id === newOrder.id ? savedOrder : o)))
+				// Actualizar estado con la orden que tiene id_backend real
+				setCurrentOrder(savedOrder);
+				setOrders((prev) => prev.map((o) => (o.id === newOrder.id ? savedOrder : o)));
 			}
 		} catch (error) {
-			console.error('Error creando nuevo pedido:', error)
+			console.error('Error creando nuevo pedido:', error);
 		}
-	}
-	
+
+		// Devolver la orden guardada (con id_backend si fue exitoso)
+		return savedOrder;
+	};
+
 	// FUNCIÓN MEJORADA PARA AGREGAR PRODUCTOS CON LA LÓGICA DE IVA
 	const addProductToOrder = async (product: Product, quantity = 1) => {
 		const clienteToUse = selectedCliente || clienteDefecto;
-		const bodegaToUse = selectedBodega || bodegaDefecto; 
+		const bodegaToUse = selectedBodega || bodegaDefecto;
 
-		if (!selectedCliente) {
-			setSelectedCliente(clienteDefecto);
+		// Establecer cliente y bodega por defecto si no están seleccionados
+		if (!selectedCliente) setSelectedCliente(clienteDefecto);
+		if (!selectedBodega) setSelectedBodega(bodegaToUse);
+
+		// Obtener o crear una orden activa (esperando a que se guarde en backend para tener id_backend)
+		let order = currentOrder;
+		if (!order) {
+			order = await createNewOrder(selectedLocation, clienteToUse, bodegaToUse);
+			// Después de createNewOrder, currentOrder ya tiene la orden con id_backend
+			// pero asignamos order para usarla localmente
 		}
 
-		if (!selectedBodega) {
-			setSelectedBodega(selectedBodega);
+		// Si después de todo sigue sin haber orden (por algún error), salir
+		if (!order) {
+			console.error('No se pudo crear la orden');
+			return;
 		}
 
-		if (!currentOrder) {
-			await createNewOrder(selectedLocation, clienteToUse, bodegaToUse)
-			return
-		}
-		
-		const existingProductIndex = currentOrder.productos.findIndex((item) => item.id_producto === product.id)
-		let updatedProducts: OrderItem[]
+		// 1. Agregar/actualizar el producto usando lógica pura
+		const updatedOrderWithItems = addProductToOrderLogic(order, product, quantity);
 
-		let impuestoPorcentaje = 0;
-		let topeValor = 0;
-
-		if (product.familia && product.familia.cuenta_venta_retencion && product.familia.cuenta_venta_retencion.impuesto) {
-			impuestoPorcentaje = parseFloat(product.familia.cuenta_venta_retencion.impuesto.porcentaje);
-        	topeValor = parseFloat(product.familia.cuenta_venta_retencion.impuesto.base);
-			
+		// 2. Actualizar retenciones globales si el producto tiene un porcentaje mayor
+		if (product.familia?.cuenta_venta_retencion?.impuesto) {
+			const impuestoPorcentaje = parseFloat(product.familia.cuenta_venta_retencion.impuesto.porcentaje);
+			const topeValor = parseFloat(product.familia.cuenta_venta_retencion.impuesto.base);
 			if (impuestoPorcentaje > porcentajeRetencion) {
-				impuestoPorcentaje = impuestoPorcentaje;
-				topeValor = topeValor;
-				setPorcentajeRetencion(impuestoPorcentaje)
-				setTopeRetencion(topeValor)
-			} else {
-				impuestoPorcentaje = porcentajeRetencion;
-				topeValor = topeRetencion;
+				setPorcentajeRetencion(impuestoPorcentaje);
+				setTopeRetencion(topeValor);
 			}
-
 		}
 
-		if (existingProductIndex >= 0) {
-			updatedProducts = [...currentOrder.productos]
-			const item = updatedProducts[existingProductIndex]
-			
-			const newQuantity = item.cantidad + quantity
-			const totals = calculateProductTotals(product, newQuantity)
-			item.cantidad = newQuantity
-			item.subtotal = totals.subtotal
-			item.iva_valor = totals.ivaValor
-			item.retencion_porcentaje = totals.retencionPorcentaje
-			item.retencion_valor = totals.retencionValor
-			item.total = totals.totalProducto
-			
-		} else {
-			
-			const totals = calculateProductTotals(product, quantity)
-			const orderItem: OrderItem = {
-				consecutivo: currentOrder.productos.length + 1,
-				id_producto: product.id,
-				nombre: `${product.codigo} - ${product.nombre}`,
-				cantidad: quantity,
-				costo: Number.parseFloat(product.precio),
-				subtotal: totals.subtotal,
-				descuento_porcentaje: 0,
-				descuento_valor: totals.descuentoValor,
-				iva_porcentaje: totals.ivaPorcentaje,
-				iva_valor: totals.ivaValor,
-				retencion_porcentaje: totals.retencionPorcentaje,
-				retencion_valor: totals.retencionValor,
-				total: totals.totalProducto,
-				concepto: "",
-				id_cuenta_venta_iva: product.familia?.cuenta_venta_iva?.id ?? null,
-				id_cuenta_venta_descuento: product.familia?.cuenta_venta_descuento?.id ?? null,
-				id_cuenta_venta_retencion: product.familia?.cuenta_venta_retencion?.id ?? null,
-			}
+		// 3. Recalcular totales finales de la orden
+		const finalOrder = calculateOrderTotals(updatedOrderWithItems);
 
-			updatedProducts = [...currentOrder.productos, orderItem]
-		}
-		
-		const updatedOrder = calculateOrderTotals({ ...currentOrder, productos: updatedProducts })
-		await updateOrderLocallyAndRemotely(updatedOrder, clienteToUse, selectedLocation, bodegaToUse)
-	}
+		// 4. Guardar en backend y actualizar estado local
+		await updateOrderLocallyAndRemotely(finalOrder, clienteToUse, selectedLocation, bodegaToUse);
+	};
 
 	const calculateProductTotals = (product: Product, quantity: number = 1) => {
 		//ESTA MAL EL DESCUENTO, DEBE SER (precioUnitario * CANTIDAD) - descuentoValor
@@ -1131,7 +1113,7 @@ function POSContent() {
 		let ivaPorcentaje = 0;
 		let subtotalUnitario = precioUnitario * quantity; // Base para el subtotal ANTES de IVA (por unidad)
 		let ivaValorUnitario = 0;
-		let totalProductoUnitario = (precioUnitario * quantity )- descuentoValor; // Base para el total ANTES de IVA (por unidad)
+		let totalProductoUnitario = (precioUnitario * quantity) - descuentoValor; // Base para el total ANTES de IVA (por unidad)
 
 		// Variables locales para retención (para el cálculo de este producto)
 		let retencionPorcentaje = 0;
@@ -1162,12 +1144,12 @@ function POSContent() {
 		} else {
 			totalProductoUnitario += ivaValorUnitario;
 		}
-		
+
 		// CÁLCULO DE RETENCIÓN POR UNIDAD (Se calcula con el porcentaje del producto, NO el global)
 		if (retencionPorcentaje > 0) {
 			retencionValorUnitario = (precioUnitario - descuentoValor) * (retencionPorcentaje / 100);
 		}
-		
+
 		// 2. Aplicar la cantidad al final
 		const subtotal = subtotalUnitario;
 		const ivaValor = ivaValorUnitario;
@@ -1202,34 +1184,34 @@ function POSContent() {
 		const descuentoProducto = productToUpdate.descuento_porcentaje;
 
 		var subTotal = newQuantity * costoProducto;
-        var totalPorCantidad = 0;
-        var totalIva = 0;
-        var totalDescuento = 0;
-        var totalProducto = 0;
+		var totalPorCantidad = 0;
+		var totalIva = 0;
+		var totalDescuento = 0;
+		var totalProducto = 0;
 
 		if (cantidadProducto > 0) {
-            totalPorCantidad = cantidadProducto * costoProducto;
-        }
+			totalPorCantidad = cantidadProducto * costoProducto;
+		}
 
 		if (descuentoProducto > 0) {
-            totalDescuento = totalPorCantidad * (descuentoProducto / 100);
-            subTotal -= totalDescuento;
-        }
+			totalDescuento = totalPorCantidad * (descuentoProducto / 100);
+			subTotal -= totalDescuento;
+		}
 
 		totalProducto = totalPorCantidad - totalDescuento;
 
 		if (ivaProducto > 0) {
-            totalIva = (totalPorCantidad - totalDescuento) * ivaProducto / 100;
-            if (ivaIncluido) {
-                subTotal = (totalPorCantidad - totalDescuento);
-                totalIva = subTotal * (ivaProducto / (ivaProducto + 100));
-            }
-        }
+			totalIva = (totalPorCantidad - totalDescuento) * ivaProducto / 100;
+			if (ivaIncluido) {
+				subTotal = (totalPorCantidad - totalDescuento);
+				totalIva = subTotal * (ivaProducto / (ivaProducto + 100));
+			}
+		}
 
 		if (ivaIncluido) {
-			subTotal-= totalIva;
+			subTotal -= totalIva;
 		} else {
-            totalProducto+= totalIva;
+			totalProducto += totalIva;
 		}
 
 		totalProducto = Math.round(totalProducto * 100) / 100;
@@ -1256,7 +1238,7 @@ function POSContent() {
 		if (!currentOrder) return
 
 		const updatedProducts = currentOrder.productos.filter((item) => item.id_producto !== productId)
-		
+
 		const updatedOrder = calculateOrderTotals({ ...currentOrder, productos: updatedProducts })
 		await updateOrderLocallyAndRemotely(updatedOrder, selectedCliente, selectedLocation, selectedBodega)
 	}
@@ -1264,18 +1246,18 @@ function POSContent() {
 	const updateProductInOrder = async (updatedProduct: OrderItem) => {
 		if (!currentOrder) return
 
-		const updatedProducts = currentOrder.productos.map((item) => 
+		const updatedProducts = currentOrder.productos.map((item) =>
 			item.consecutivo === updatedProduct.consecutivo ? updatedProduct : item
 		)
 
 		const updatedOrder = calculateOrderTotals({ ...currentOrder, productos: updatedProducts })
 		await updateOrderLocallyAndRemotely(updatedOrder, selectedCliente, selectedLocation, selectedBodega)
 	}
-	
+
 	const handleUpdateBodega = async (bodega: Bodega | null) => {
 		setSelectedBodega(bodega)
 		if (currentOrder && selectedCliente && bodega) {
-			await updateOrderLocallyAndRemotely(currentOrder, selectedCliente, selectedLocation, bodega) 
+			await updateOrderLocallyAndRemotely(currentOrder, selectedCliente, selectedLocation, bodega)
 		}
 	}
 
@@ -1287,14 +1269,14 @@ function POSContent() {
 	}
 
 	const handleUpdateUbicacion = async (ubicacion: Ubicacion | null) => {
-    
+
 		//ACTUALIZAR SIN UBICACIÓN
 		if (!ubicacion) {
 			if (currentOrder) {
 				await updateOrderLocallyAndRemotely(
-					{...currentOrder, id_ubicacion: null, ubicacion: null, ubicacion_nombre: "Sin Ubicación"}, 
-					selectedCliente, 
-					null, 
+					{ ...currentOrder, id_ubicacion: null, ubicacion: null, ubicacion_nombre: "Sin Ubicación" },
+					selectedCliente,
+					null,
 					selectedBodega
 				);
 			}
@@ -1314,7 +1296,7 @@ function POSContent() {
 
 		//BUSCAR PEDIDO PENDIENTE
 		const pedidoOcupandoUbicacion = orders.find(
-			order => order.id_ubicacion === ubicacion.id && order.estado === 'pendiente' 
+			order => order.id_ubicacion === ubicacion.id && order.estado === 'pendiente'
 		);
 		if (pedidoOcupandoUbicacion) {
 			if (currentOrder && currentOrder.id === pedidoOcupandoUbicacion.id) {
@@ -1329,9 +1311,9 @@ function POSContent() {
 		setSelectedLocation(ubicacion)
 		createNewOrder(ubicacion)
 	};
-	
-	const deleteOrder = async(orderId: number) => {
-		
+
+	const deleteOrder = async (orderId: number) => {
+
 		const payload = {
 			id: orderId
 		}
@@ -1374,7 +1356,7 @@ function POSContent() {
 			setShowPaymentModal(true)
 		}
 	}
-	
+
 	const processPayment = async (paymentData: any) => {
 		if (currentOrder) {
 			try {
@@ -1384,20 +1366,20 @@ function POSContent() {
 				if (savedOrder.id_venta) {
 					const completedOrder = { ...savedOrder, estado: "completado" as const }
 					setOrders((prev) => prev.map((order) => (order.id === currentOrder.id ? completedOrder : order)))
-					
+
 					const remainingOrders = orders.filter(o => o.id !== currentOrder.id && o.estado === 'pendiente')
 					setCurrentOrder(remainingOrders.length > 0 ? remainingOrders[0] : null)
 					setShowPaymentModal(false)
-	
+
 					window.dispatchEvent(new CustomEvent('showToast', {
-						detail: { 
+						detail: {
 							message: 'Venta creada con exito!',
 							type: 'success',
 							autoClose: true,
 							duration: 5000
 						}
 					}));
-	
+
 					if (savedOrder.id_venta) {
 						const token = getToken();
 						const pdfUrl = `https://app.portafolioerp.com/pos/venta-print/${token}/${savedOrder.id_venta}`;
@@ -1435,10 +1417,10 @@ function POSContent() {
 					{/* Logo + nombre empresa */}
 					<div className="flex items-center gap-2">
 						{empresa?.logo ? (
-							<img 
-								src={empresa.logo.startsWith('http') ? empresa.logo : `https://porfaolioerpbucket.nyc3.digitaloceanspaces.com/${empresa.logo}`} 
-								className="h-7 w-7 rounded-lg object-cover" 
-								alt="logo" 
+							<img
+								src={empresa.logo.startsWith('http') ? empresa.logo : `https://porfaolioerpbucket.nyc3.digitaloceanspaces.com/${empresa.logo}`}
+								className="h-7 w-7 rounded-lg object-cover"
+								alt="logo"
 							/>
 						) : (
 							<div className="h-7 w-7 rounded-lg bg-primary/20 flex items-center justify-center">
@@ -1657,64 +1639,61 @@ function POSContent() {
 					<div className="flex items-stretch justify-around p-1.5 gap-1">
 						{/* Productos */}
 						<button
-						onClick={() => setActiveTab('products')}
-						className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 rounded-xl transition-all duration-200 ${
-							activeTab === 'products'
-							? 'bg-primary/15 text-primary shadow-sm ring-1 ring-primary/20'
-							: 'text-muted-foreground hover:bg-muted/40 active:scale-95'
-						}`}
+							onClick={() => setActiveTab('products')}
+							className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 rounded-xl transition-all duration-200 ${activeTab === 'products'
+								? 'bg-primary/15 text-primary shadow-sm ring-1 ring-primary/20'
+								: 'text-muted-foreground hover:bg-muted/40 active:scale-95'
+								}`}
 						>
-						<Package className={`h-5 w-5 ${activeTab === 'products' ? 'text-primary' : ''}`} />
-						<span className="text-[11px] font-medium">Productos</span>
+							<Package className={`h-5 w-5 ${activeTab === 'products' ? 'text-primary' : ''}`} />
+							<span className="text-[11px] font-medium">Productos</span>
 						</button>
 
 						{/* Pedido actual */}
 						<button
-						onClick={() => setActiveTab('order')}
-						className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 rounded-xl transition-all duration-200 relative ${
-							activeTab === 'order'
-							? 'bg-primary/15 text-primary shadow-sm ring-1 ring-primary/20'
-							: 'text-muted-foreground hover:bg-muted/40 active:scale-95'
-						}`}
+							onClick={() => setActiveTab('order')}
+							className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 rounded-xl transition-all duration-200 relative ${activeTab === 'order'
+								? 'bg-primary/15 text-primary shadow-sm ring-1 ring-primary/20'
+								: 'text-muted-foreground hover:bg-muted/40 active:scale-95'
+								}`}
 						>
-						<div className="relative">
-							<ShoppingCart className={`h-5 w-5 ${activeTab === 'order' ? 'text-primary' : ''}`} />
-							{currentOrder && currentOrder.productos.length > 0 && (
-							<span className="absolute -top-2 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
-								{currentOrder.productos.length}
-							</span>
+							<div className="relative">
+								<ShoppingCart className={`h-5 w-5 ${activeTab === 'order' ? 'text-primary' : ''}`} />
+								{currentOrder && currentOrder.productos.length > 0 && (
+									<span className="absolute -top-2 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
+										{currentOrder.productos.length}
+									</span>
+								)}
+							</div>
+							<span className="text-[11px] font-medium">Pedido</span>
+							{currentOrder && currentOrder.total > 0 && (
+								<span className="text-[10px] font-bold text-primary leading-tight mt-0.5">
+									{new Intl.NumberFormat("es-CO", {
+										style: "currency",
+										currency: "COP",
+										minimumFractionDigits: 0,
+									}).format(currentOrder.total)}
+								</span>
 							)}
-						</div>
-						<span className="text-[11px] font-medium">Pedido</span>
-						{currentOrder && currentOrder.total > 0 && (
-							<span className="text-[10px] font-bold text-primary leading-tight mt-0.5">
-							{new Intl.NumberFormat("es-CO", {
-								style: "currency",
-								currency: "COP",
-								minimumFractionDigits: 0,
-							}).format(currentOrder.total)}
-							</span>
-						)}
 						</button>
 
 						{/* Lista de pedidos */}
 						<button
-						onClick={() => setActiveTab('orders')}
-						className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 rounded-xl transition-all duration-200 relative ${
-							activeTab === 'orders'
-							? 'bg-primary/15 text-primary shadow-sm ring-1 ring-primary/20'
-							: 'text-muted-foreground hover:bg-muted/40 active:scale-95'
-						}`}
+							onClick={() => setActiveTab('orders')}
+							className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 rounded-xl transition-all duration-200 relative ${activeTab === 'orders'
+								? 'bg-primary/15 text-primary shadow-sm ring-1 ring-primary/20'
+								: 'text-muted-foreground hover:bg-muted/40 active:scale-95'
+								}`}
 						>
-						<div className="relative">
-							<ClipboardList className={`h-5 w-5 ${activeTab === 'orders' ? 'text-primary' : ''}`} />
-							{orders.filter(o => o.estado === 'pendiente').length > 0 && (
-							<span className="absolute -top-2 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
-								{orders.filter(o => o.estado === 'pendiente').length}
-							</span>
-							)}
-						</div>
-						<span className="text-[11px] font-medium">Pedidos</span>
+							<div className="relative">
+								<ClipboardList className={`h-5 w-5 ${activeTab === 'orders' ? 'text-primary' : ''}`} />
+								{orders.filter(o => o.estado === 'pendiente').length > 0 && (
+									<span className="absolute -top-2 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
+										{orders.filter(o => o.estado === 'pendiente').length}
+									</span>
+								)}
+							</div>
+							<span className="text-[11px] font-medium">Pedidos</span>
 						</button>
 					</div>
 				</div>
