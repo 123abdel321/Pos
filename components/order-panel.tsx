@@ -438,11 +438,12 @@ export function OrderPanel({
                                     <div className="flex items-center gap-1">
                                         <User className="h-3 w-3 text-muted-foreground" />
                                         <div className="text-[11px] leading-tight">
-                                            <div className="font-medium truncate max-w-[120px]">
+                                            <div className="font-medium truncate">
                                                 {selectedCliente.nombre_completo}
                                             </div>
-                                            <div className="text-[10px] text-muted-foreground truncate max-w-[120px]">
-                                                {selectedCliente.text || "Cliente por defecto"}
+                                            <div className="text-[10px] text-muted-foreground truncate">
+                                                {selectedCliente.telefono ? "Tel: "+selectedCliente.telefono : ""}<br/>
+                                                {selectedCliente.email ? "Mail: "+selectedCliente.email : ""}<br/>
                                             </div>
                                         </div>
                                     </div>

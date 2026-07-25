@@ -129,6 +129,7 @@ export interface Cliente {
 	telefono: string | null
 	text: string
 	nombre_completo: string
+	numero_documento: string | null
 }
 
 export interface Bodega {
@@ -467,7 +468,7 @@ function POSContent() {
 				retencion_porcentaje: retencionPorcentajeNum,
 				retencion_valor: retencionValorNum,
 				total: totalNum,
-				concepto: "",
+				concepto: detalle.observacion,
 				id_cuenta_venta_iva: detalle.id_cuenta_venta_iva,
 				id_cuenta_venta_descuento: detalle.id_cuenta_venta_descuento,
 				id_cuenta_venta_retencion: detalle.id_cuenta_venta_retencion
@@ -811,6 +812,7 @@ function POSContent() {
 			try {
 				const response = await apiClient.get('/pos/pedidos');
 				const backendOrders: BackendPedido[] = response.data.data || [];
+				
 				const newOrders = backendOrders
 					.filter(o => o.estado === 1)
 					.map(mapBackendOrderToFrontend)
@@ -839,9 +841,10 @@ function POSContent() {
 						porcentaje_reteica: cliente.porcentaje_reteica,
 						apartamentos: cliente.apartamentos,
 						id_responsabilidades: cliente.id_responsabilidades,
-						telefono: cliente.telefono,
+						telefono: cliente.telefono_1,
 						text: cliente.text,
-						nombre_completo: cliente.nombre_completo
+						nombre_completo: cliente.nombre_completo,
+						numero_documento: cliente.numero_documento
 					}
 					setSelectedCliente(dataCliente)
 				}
@@ -930,7 +933,8 @@ function POSContent() {
 					id_responsabilidades: orderCliente.id_responsabilidades,
 					telefono: orderCliente.telefono,
 					text: orderCliente.text,
-					nombre_completo: orderCliente.nombre_completo
+					nombre_completo: orderCliente.nombre_completo,
+					numero_documento: orderCliente.numero_documento
 				}
 				setSelectedCliente(dataCliente)
 			} else {
