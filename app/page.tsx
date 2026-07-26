@@ -1049,18 +1049,29 @@ function POSContent() {
 		setOrders((prev) => [...prev, newOrder]);
 		setCurrentOrder(newOrder);
 
-		// Guardar en backend y ESPERAR la respuesta para obtener el id_backend
 		let savedOrder: Order = newOrder;
-		try {
-			savedOrder = await saveOrderToBackend(newOrder, cliente, ubicacion, bodega);
-			if (savedOrder?.id_backend) {
-				// Actualizar estado con la orden que tiene id_backend real
-				setCurrentOrder(savedOrder);
-				setOrders((prev) => prev.map((o) => (o.id === newOrder.id ? savedOrder : o)));
-			}
-		} catch (error) {
-			console.error('Error creando nuevo pedido:', error);
+
+		if (!cliente) {
+			window.dispatchEvent(new CustomEvent('showError', {
+                detail: { message: 'Selecciona un cliente primero', type: 'warning', html: true, autoClose: true, duration: 5000 }
+            }));
 		}
+
+		if (cliente && bodega) {
+			// Guardar en backend y ESPERAR la respuesta para obtener el id_backend
+			
+			try {
+				savedOrder = await saveOrderToBackend(newOrder, cliente, ubicacion, bodega);
+				if (savedOrder?.id_backend) {
+					// Actualizar estado con la orden que tiene id_backend real
+					setCurrentOrder(savedOrder);
+					setOrders((prev) => prev.map((o) => (o.id === newOrder.id ? savedOrder : o)));
+				}
+			} catch (error) {
+				console.error('Error creando nuevo pedido:', error);
+			}
+		}
+
 
 		// Devolver la orden guardada (con id_backend si fue exitoso)
 		return savedOrder;
@@ -1079,8 +1090,6 @@ function POSContent() {
 		let order = currentOrder;
 		if (!order) {
 			order = await createNewOrder(selectedLocation, clienteToUse, bodegaToUse);
-			// Después de createNewOrder, currentOrder ya tiene la orden con id_backend
-			// pero asignamos order para usarla localmente
 		}
 
 		// Si después de todo sigue sin haber orden (por algún error), salir

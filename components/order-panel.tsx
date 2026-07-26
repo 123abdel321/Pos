@@ -442,8 +442,18 @@ export function OrderPanel({
                                                 {selectedCliente.nombre_completo}
                                             </div>
                                             <div className="text-[10px] text-muted-foreground truncate">
-                                                {selectedCliente.telefono ? "Tel: "+selectedCliente.telefono : ""}<br/>
-                                                {selectedCliente.email ? "Mail: "+selectedCliente.email : ""}<br/>
+                                                {selectedCliente.telefono && (
+                                                    <>
+                                                        Tel: {selectedCliente.telefono}
+                                                        <br />
+                                                    </>
+                                                )}
+
+                                                {selectedCliente.email && (
+                                                    <>
+                                                        Mail: {selectedCliente.email}
+                                                    </>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
