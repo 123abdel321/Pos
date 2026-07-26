@@ -825,6 +825,7 @@ function POSContent() {
 
 				const cliente = newOrders[0].cliente;
 				const ubicacion = newOrders[0].ubicacion;
+				const bodega = newOrders[0].bodega;
 
 				if (cliente) {
 					const dataCliente = {
@@ -863,6 +864,27 @@ function POSContent() {
 					}
 					setSelectedLocation(dataUbicacion)
 				}
+
+				if (bodega) {
+					const dataBodega = {
+						id: bodega.id,
+						codigo: bodega.codigo,
+						nombre: bodega.nombre,
+						ubicacion: bodega.ubicacion,
+						id_centro_costos: bodega.id_centro_costos,
+						id_responsable: bodega.id_responsable,
+						id_cuenta_cartera: bodega.id_cuenta_cartera,
+						consecutivo: bodega.consecutivo,
+						consecutivo_parqueadero: bodega.consecutivo_parqueadero,
+						created_by: null,
+						updated_by: null,
+						created_at: null,
+						updated_at: null,
+						text: bodega.codigo + ' - ' + bodega.nombre,
+					}
+					setSelectedBodega(dataBodega)
+				}
+
 
 				if (!currentOrder && newOrders.length > 0) {
 					setCurrentOrder(newOrders[0])
